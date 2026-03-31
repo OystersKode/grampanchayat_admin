@@ -1,0 +1,3 @@
+class WishesModel {
+  // Define properties
+}
