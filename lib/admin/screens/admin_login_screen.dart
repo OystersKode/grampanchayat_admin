@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'admin_dashboard_screen.dart';
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
@@ -172,7 +173,14 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                                 ),
                                 elevation: 0,
                               ),
-                              onPressed: () {},
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const AdminDashboardScreen(),
+                                  ),
+                                );
+                              },
                               child: const Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
