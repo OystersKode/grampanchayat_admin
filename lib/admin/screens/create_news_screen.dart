@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import '../services/news_service.dart';
 
 class CreateNewsScreen extends StatefulWidget {
   const CreateNewsScreen({super.key});
@@ -13,16 +15,68 @@ class CreateNewsScreen extends StatefulWidget {
 class _CreateNewsScreenState extends State<CreateNewsScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _imageUrlController = TextEditingController();
   final QuillController _controller = QuillController.basic();
-  File? _image;
+  XFile? _selectedImage;
   final ImagePicker _picker = ImagePicker();
+  bool _isSubmitting = false;
+  Future<void> _submitNews() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    if (_controller.document.isEmpty()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a description')),
+      );
+      return;
+    }
+    final String imageUrl = _imageUrlController.text.trim();
+    if (imageUrl.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please provide a public image URL for cross-app display'),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      await NewsService.instance.createNews(
+        title: _titleController.text.trim(),
+        content: _controller.document.toPlainText().trim(),
+        headerImageUrl: imageUrl,
+      );
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('News created successfully!')),
+      );
+      Navigator.pop(context);
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to create news: $error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
 
   Future<void> _pickImage() async {
     try {
       final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
       if (pickedFile != null) {
         setState(() {
-          _image = File(pickedFile.path);
+          _selectedImage = pickedFile;
         });
       }
     } catch (e) {
@@ -37,6 +91,7 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
   @override
   void dispose() {
     _titleController.dispose();
+    _imageUrlController.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -108,10 +163,12 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(color: const Color(0xFFE3BEB8)),
                             ),
-                            child: _image != null
+                            child: _selectedImage != null
                                 ? ClipRRect(
                                     borderRadius: BorderRadius.circular(16),
-                                    child: Image.file(_image!, fit: BoxFit.cover),
+                                    child: kIsWeb
+                                        ? Image.network(_selectedImage!.path, fit: BoxFit.cover)
+                                        : Image.file(File(_selectedImage!.path), fit: BoxFit.cover),
                                   )
                                 : Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -125,6 +182,25 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
                                     ],
                                   ),
                           ),
+                        ),
+                        const SizedBox(height: 24),
+                        _buildLabel('Cover Image URL (public)'),
+                        TextFormField(
+                          controller: _imageUrlController,
+                          decoration: _buildInputDecoration(
+                            'https://example.com/news-image.jpg',
+                          ),
+                          validator: (String? value) {
+                            final String url = (value ?? '').trim();
+                            if (url.isEmpty) {
+                              return 'Please enter image URL';
+                            }
+                            final Uri? uri = Uri.tryParse(url);
+                            if (uri == null || (!uri.hasScheme) || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+                              return 'Enter a valid http/https URL';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 24),
 
@@ -198,20 +274,7 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
           width: double.infinity,
           height: 60,
           child: ElevatedButton(
-            onPressed: () {
-              if (_formKey.currentState!.validate()) {
-                if (_controller.document.isEmpty()) {
-                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please enter a description')),
-                  );
-                  return;
-                }
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('News created successfully!')),
-                );
-                Navigator.pop(context);
-              }
-            },
+            onPressed: _isSubmitting ? null : _submitNews,
             style: ElevatedButton.styleFrom(
               backgroundColor: primaryMaroon,
               foregroundColor: Colors.white,
@@ -221,10 +284,16 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
               elevation: 4,
               shadowColor: primaryMaroon.withOpacity(0.3),
             ),
-            child: const Text(
-              'POST NEWS',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.2),
-            ),
+            child: _isSubmitting
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                : const Text(
+                    'POST NEWS',
+                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.2),
+                  ),
           ),
         ),
       ),

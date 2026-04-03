@@ -1,9 +1,37 @@
 import 'package:flutter/material.dart';
 import 'create_news_screen.dart';
 import 'create_wishes_screen.dart';
+import 'admin_login_screen.dart';
+import 'member_requests_screen.dart';
+import '../services/auth_service.dart';
 
-class AdminDashboardScreen extends StatelessWidget {
+class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
+
+  @override
+  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+}
+
+class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
+  late Future<Map<String, dynamic>> _statsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _statsFuture = AuthService.instance.getDashboardStats();
+  }
+
+  Future<void> _logout() async {
+    await AuthService.instance.logout();
+    if (!mounted) {
+      return;
+    }
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute<void>(builder: (BuildContext context) => const AdminLoginScreen()),
+      (Route<dynamic> route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,6 +113,31 @@ class AdminDashboardScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 40),
+                    FutureBuilder<Map<String, dynamic>>(
+                      future: _statsFuture,
+                      builder: (BuildContext context, AsyncSnapshot<Map<String, dynamic>> snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Padding(
+                            padding: EdgeInsets.only(bottom: 16),
+                            child: LinearProgressIndicator(),
+                          );
+                        }
+                        final Map<String, dynamic> data = snapshot.data ?? <String, dynamic>{};
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 20),
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _chip('Users: ${data['total_users'] ?? 0}'),
+                              _chip('News: ${data['total_news'] ?? 0}'),
+                              _chip('Likes: ${data['total_likes'] ?? 0}'),
+                              _chip('Pending: ${data['pending_requests'] ?? 0}'),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                     _buildDashboardItem(
                       context,
                       title: 'Create News',
@@ -92,6 +145,16 @@ class AdminDashboardScreen extends StatelessWidget {
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const CreateNewsScreen()),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildDashboardItem(
+                      context,
+                      title: 'Member Requests',
+                      subtitle: 'Review and approve/reject membership requests',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const MemberRequestsScreen()),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -108,7 +171,7 @@ class AdminDashboardScreen extends StatelessWidget {
                     const Divider(color: Color(0xFFF1F1F1)),
                     const SizedBox(height: 24),
                     TextButton.icon(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: _logout,
                       icon: const Icon(Icons.logout, color: primaryMaroon, size: 20),
                       label: const Text(
                         'LOGOUT',
@@ -254,6 +317,17 @@ class AdminDashboardScreen extends StatelessWidget {
         fontWeight: FontWeight.bold,
         color: Color(0xFF5A403C),
       ),
+    );
+  }
+
+  Widget _chip(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFBE7E7),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(text),
     );
   }
 }
