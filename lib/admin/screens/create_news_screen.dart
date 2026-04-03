@@ -1,7 +1,10 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import '../services/news_service.dart';
 
 class CreateNewsScreen extends StatefulWidget {
   const CreateNewsScreen({super.key});
@@ -13,16 +16,76 @@ class CreateNewsScreen extends StatefulWidget {
 class _CreateNewsScreenState extends State<CreateNewsScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _imageUrlController = TextEditingController();
   final QuillController _controller = QuillController.basic();
-  File? _image;
+  XFile? _selectedImage;
   final ImagePicker _picker = ImagePicker();
+  bool _isSubmitting = false;
+  Future<void> _submitNews() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    if (_controller.document.isEmpty()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a description')),
+      );
+      return;
+    }
+    String imageUrl = _imageUrlController.text.trim();
+    if (imageUrl.isEmpty && _selectedImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select an image or provide a public image URL'),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      if (_selectedImage != null) {
+        final List<int> bytes = await _selectedImage!.readAsBytes();
+        final String mimeType = _guessMimeType(_selectedImage!.name);
+        final String base64Image = base64Encode(bytes);
+        final String dataUri = 'data:$mimeType;base64,$base64Image';
+        imageUrl = await NewsService.instance.uploadImageBase64(dataUri);
+      }
+
+      await NewsService.instance.createNews(
+        title: _titleController.text.trim(),
+        content: _controller.document.toPlainText().trim(),
+        headerImageUrl: imageUrl,
+      );
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('News created successfully!')),
+      );
+      Navigator.pop(context);
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to create news: $error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
 
   Future<void> _pickImage() async {
     try {
       final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
       if (pickedFile != null) {
         setState(() {
-          _image = File(pickedFile.path);
+          _selectedImage = pickedFile;
         });
       }
     } catch (e) {
@@ -37,6 +100,7 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
   @override
   void dispose() {
     _titleController.dispose();
+    _imageUrlController.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -108,10 +172,12 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(color: const Color(0xFFE3BEB8)),
                             ),
-                            child: _image != null
+                            child: _selectedImage != null
                                 ? ClipRRect(
                                     borderRadius: BorderRadius.circular(16),
-                                    child: Image.file(_image!, fit: BoxFit.cover),
+                                    child: kIsWeb
+                                        ? Image.network(_selectedImage!.path, fit: BoxFit.cover)
+                                        : Image.file(File(_selectedImage!.path), fit: BoxFit.cover),
                                   )
                                 : Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -125,6 +191,38 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
                                     ],
                                   ),
                           ),
+                        ),
+                        const SizedBox(height: 24),
+                        _buildLabel('Cover image URL (optional)'),
+                        Text(
+                          _selectedImage != null
+                              ? 'Not needed when you pick an image above — we upload it for you.'
+                              : 'Only if you are not uploading: paste a public https image link.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: const Color(0xFF5A403C).withOpacity(0.75),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _imageUrlController,
+                          decoration: _buildInputDecoration(
+                            'https://example.com/news-image.jpg',
+                          ),
+                          validator: (String? value) {
+                            if (_selectedImage != null) {
+                              return null;
+                            }
+                            final String url = (value ?? '').trim();
+                            if (url.isEmpty) {
+                              return 'Select a cover image above or paste a URL here';
+                            }
+                            final Uri? uri = Uri.tryParse(url);
+                            if (uri == null || (!uri.hasScheme) || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+                              return 'Enter a valid http/https URL';
+                            }
+                            return null;
+                          },
                         ),
                         const SizedBox(height: 24),
 
@@ -198,20 +296,7 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
           width: double.infinity,
           height: 60,
           child: ElevatedButton(
-            onPressed: () {
-              if (_formKey.currentState!.validate()) {
-                if (_controller.document.isEmpty()) {
-                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please enter a description')),
-                  );
-                  return;
-                }
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('News created successfully!')),
-                );
-                Navigator.pop(context);
-              }
-            },
+            onPressed: _isSubmitting ? null : _submitNews,
             style: ElevatedButton.styleFrom(
               backgroundColor: primaryMaroon,
               foregroundColor: Colors.white,
@@ -221,10 +306,16 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
               elevation: 4,
               shadowColor: primaryMaroon.withOpacity(0.3),
             ),
-            child: const Text(
-              'POST NEWS',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.2),
-            ),
+            child: _isSubmitting
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                : const Text(
+                    'POST NEWS',
+                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.2),
+                  ),
           ),
         ),
       ),
@@ -265,5 +356,19 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
         borderSide: const BorderSide(color: Color(0xFF8B0000), width: 1.5),
       ),
     );
+  }
+
+  String _guessMimeType(String fileName) {
+    final String lower = fileName.toLowerCase();
+    if (lower.endsWith('.png')) {
+      return 'image/png';
+    }
+    if (lower.endsWith('.webp')) {
+      return 'image/webp';
+    }
+    if (lower.endsWith('.gif')) {
+      return 'image/gif';
+    }
+    return 'image/jpeg';
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'admin_dashboard_screen.dart';
+import '../services/auth_service.dart';
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
@@ -10,6 +11,52 @@ class AdminLoginScreen extends StatefulWidget {
 
 class _AdminLoginScreenState extends State<AdminLoginScreen> {
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    final String username = _usernameController.text.trim();
+    final String password = _passwordController.text.trim();
+    if (username.isEmpty || password.isEmpty) {
+      _showMessage('Please enter username and password');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await AuthService.instance.login(username: username, password: password);
+      if (!mounted) {
+        return;
+      }
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute<void>(builder: (BuildContext context) => const AdminDashboardScreen()),
+      );
+    } catch (error) {
+      _showMessage('Login failed: $error');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -110,6 +157,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                           ),
                           const SizedBox(height: 8),
                           TextField(
+                            controller: _usernameController,
                             decoration: InputDecoration(
                               hintText: 'Enter GP Identity',
                               prefixIcon: const Icon(Icons.person, color: Colors.grey),
@@ -135,6 +183,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                           ),
                           const SizedBox(height: 8),
                           TextField(
+                            controller: _passwordController,
                             obscureText: !_isPasswordVisible,
                             decoration: InputDecoration(
                               hintText: 'Access Credentials',
@@ -174,27 +223,34 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                                 elevation: 0,
                               ),
                               onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const AdminDashboardScreen(),
-                                  ),
-                                );
+                                if (_isLoading) {
+                                  return;
+                                }
+                                _login();
                               },
-                              child: const Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Text(
-                                    'LOGIN',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          'LOGIN',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        SizedBox(width: 8),
+                                        Icon(Icons.arrow_forward, size: 20),
+                                      ],
                                     ),
-                                  ),
-                                  SizedBox(width: 8),
-                                  Icon(Icons.arrow_forward, size: 20),
-                                ],
-                              ),
                             ),
                           ),
                           const SizedBox(height: 24),
