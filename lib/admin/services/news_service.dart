@@ -36,4 +36,18 @@ class NewsService {
       },
     );
   }
+
+  Future<String> uploadImageBase64(String imageBase64) async {
+    final String token = await AuthService.instance.requireToken();
+    final Map<String, dynamic> response = await _apiClient.post(
+      '/news/upload-image',
+      bearerToken: token,
+      body: <String, dynamic>{'image_base64': imageBase64},
+    );
+    final Object? imageUrl = response['image_url'];
+    if (imageUrl is! String || imageUrl.isEmpty) {
+      throw Exception('Image upload response missing image_url');
+    }
+    return imageUrl;
+  }
 }

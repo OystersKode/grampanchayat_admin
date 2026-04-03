@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
@@ -30,11 +31,11 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
       );
       return;
     }
-    final String imageUrl = _imageUrlController.text.trim();
-    if (imageUrl.isEmpty) {
+    String imageUrl = _imageUrlController.text.trim();
+    if (imageUrl.isEmpty && _selectedImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please provide a public image URL for cross-app display'),
+          content: Text('Please select an image or provide a public image URL'),
         ),
       );
       return;
@@ -45,6 +46,14 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
     });
 
     try {
+      if (_selectedImage != null) {
+        final List<int> bytes = await _selectedImage!.readAsBytes();
+        final String mimeType = _guessMimeType(_selectedImage!.name);
+        final String base64Image = base64Encode(bytes);
+        final String dataUri = 'data:$mimeType;base64,$base64Image';
+        imageUrl = await NewsService.instance.uploadImageBase64(dataUri);
+      }
+
       await NewsService.instance.createNews(
         title: _titleController.text.trim(),
         content: _controller.document.toPlainText().trim(),
@@ -184,16 +193,29 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
                           ),
                         ),
                         const SizedBox(height: 24),
-                        _buildLabel('Cover Image URL (public)'),
+                        _buildLabel('Cover image URL (optional)'),
+                        Text(
+                          _selectedImage != null
+                              ? 'Not needed when you pick an image above — we upload it for you.'
+                              : 'Only if you are not uploading: paste a public https image link.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: const Color(0xFF5A403C).withOpacity(0.75),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
                         TextFormField(
                           controller: _imageUrlController,
                           decoration: _buildInputDecoration(
                             'https://example.com/news-image.jpg',
                           ),
                           validator: (String? value) {
+                            if (_selectedImage != null) {
+                              return null;
+                            }
                             final String url = (value ?? '').trim();
                             if (url.isEmpty) {
-                              return 'Please enter image URL';
+                              return 'Select a cover image above or paste a URL here';
                             }
                             final Uri? uri = Uri.tryParse(url);
                             if (uri == null || (!uri.hasScheme) || (!url.startsWith('http://') && !url.startsWith('https://'))) {
@@ -334,5 +356,19 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
         borderSide: const BorderSide(color: Color(0xFF8B0000), width: 1.5),
       ),
     );
+  }
+
+  String _guessMimeType(String fileName) {
+    final String lower = fileName.toLowerCase();
+    if (lower.endsWith('.png')) {
+      return 'image/png';
+    }
+    if (lower.endsWith('.webp')) {
+      return 'image/webp';
+    }
+    if (lower.endsWith('.gif')) {
+      return 'image/gif';
+    }
+    return 'image/jpeg';
   }
 }
