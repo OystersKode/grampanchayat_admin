@@ -72,14 +72,6 @@ class AdminDrawer extends StatelessWidget {
               );
             },
           ),
-          ListTile(
-            leading: const Icon(Icons.analytics),
-            title: const Text('Analytics'),
-            onTap: () {
-              // Not implemented yet
-              Navigator.pop(context);
-            },
-          ),
           const Spacer(),
           const Divider(),
           ListTile(

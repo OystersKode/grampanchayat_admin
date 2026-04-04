@@ -47,25 +47,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       appBar: AppBar(
         backgroundColor: backgroundColor,
         elevation: 0,
-        leading: const Padding(
-          padding: EdgeInsets.only(left: 16.0),
-          child: Icon(Icons.account_balance, color: primaryMaroon),
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: primaryMaroon),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
         ),
         title: const Text(
-          'Grampanchayat Portal',
+          'Kagwad Grampanchayat Admin',
           style: TextStyle(
             color: primaryMaroon,
             fontWeight: FontWeight.bold,
             fontSize: 18,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.account_circle, color: primaryMaroon),
-            onPressed: () {},
-          ),
-          const SizedBox(width: 8),
-        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
