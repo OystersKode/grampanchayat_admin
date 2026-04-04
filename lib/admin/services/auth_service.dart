@@ -1,4 +1,4 @@
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../config/app_config.dart';
 import 'api_client.dart';
@@ -9,6 +9,7 @@ class AuthService {
   static AuthService? _instance;
   static const String _tokenKey = 'admin_token';
   final ApiClient _apiClient;
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
   static void initialize() {
     _instance = AuthService._(ApiClient(baseUrl: AppConfig.apiV1BaseUrl));
@@ -38,13 +39,15 @@ class AuthService {
     if (token is! String || token.isEmpty) {
       throw Exception('Invalid login response: missing token');
     }
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenKey, token);
+    await _storage.write(key: _tokenKey, value: token);
+  }
+
+  Future<String?> getToken() async {
+    return await _storage.read(key: _tokenKey);
   }
 
   Future<String> requireToken() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    final String? token = prefs.getString(_tokenKey);
+    final String? token = await getToken();
     if (token == null || token.isEmpty) {
       throw Exception('Admin session not found. Please login again.');
     }
@@ -61,7 +64,6 @@ class AuthService {
   }
 
   Future<void> logout() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_tokenKey);
+    await _storage.delete(key: _tokenKey);
   }
 }

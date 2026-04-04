@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../services/member_requests_service.dart';
+import '../widgets/admin_drawer.dart';
+import 'member_request_details_screen.dart';
 
 class MemberRequestsScreen extends StatefulWidget {
   const MemberRequestsScreen({super.key});
@@ -18,29 +20,38 @@ class _MemberRequestsScreenState extends State<MemberRequestsScreen> {
     _requestsFuture = MemberRequestsService.instance.fetchRequests();
   }
 
-  Future<void> _updateStatus(int id, String status) async {
-    try {
-      await MemberRequestsService.instance.updateStatus(id: id, status: status);
-      if (!mounted) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Request marked as $status')),
-      );
-      setState(() {
-        _requestsFuture = MemberRequestsService.instance.fetchRequests();
-      });
-    } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Update failed: $error')),
-      );
+  void _refreshRequests() {
+    setState(() {
+      _requestsFuture = MemberRequestsService.instance.fetchRequests();
+    });
+  }
+
+  Future<void> _navigateToDetails(Map<String, dynamic> request) async {
+    final bool? updated = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MemberRequestDetailsScreen(request: request),
+      ),
+    );
+    if (updated == true) {
+      _refreshRequests();
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    const Color primaryMaroon = Color(0xFF8B0000);
     return Scaffold(
-      appBar: AppBar(title: const Text('Member Requests')),
+      drawer: const AdminDrawer(),
+      appBar: AppBar(
+        title: const Text('Member Requests'),
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+      ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _requestsFuture,
         builder: (BuildContext context, AsyncSnapshot<List<Map<String, dynamic>>> snapshot) {
@@ -73,32 +84,46 @@ class _MemberRequestsScreenState extends State<MemberRequestsScreen> {
               final String status = '${row['status'] ?? 'pending'}';
 
               return Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+                ),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  leading: CircleAvatar(
+                    backgroundColor: primaryMaroon.withOpacity(0.1),
+                    child: const Icon(Icons.person, color: primaryMaroon),
+                  ),
+                  title: Text(
+                    name,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 4),
                       Text('Phone: $phone'),
-                      Text('Address: $address'),
-                      Text('Status: $status'),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 2),
                       Row(
                         children: [
-                          ElevatedButton(
-                            onPressed: id == 0 ? null : () => _updateStatus(id, 'approved'),
-                            child: const Text('Approve'),
-                          ),
-                          const SizedBox(width: 8),
-                          OutlinedButton(
-                            onPressed: id == 0 ? null : () => _updateStatus(id, 'rejected'),
-                            child: const Text('Reject'),
+                          const Text('Status: '),
+                          Text(
+                            status.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: status.toLowerCase() == 'pending' 
+                                ? Colors.orange 
+                                : (status.toLowerCase() == 'approved' ? Colors.green : Colors.red),
+                            ),
                           ),
                         ],
                       ),
                     ],
                   ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _navigateToDetails(row),
                 ),
               );
             },

@@ -20,6 +20,24 @@ class NewsService {
     return service;
   }
 
+  Future<List<Map<String, dynamic>>> fetchNews() async {
+    final String? token = await AuthService.instance.getToken();
+    final Map<String, dynamic> payload = await _apiClient.get(
+      '/news',
+      bearerToken: token,
+    );
+    final List<dynamic> rows = (payload['data'] as List<dynamic>?) ?? <dynamic>[];
+    return rows.whereType<Map<String, dynamic>>().toList();
+  }
+
+  Future<void> deleteNews(String id) async {
+    final String token = await AuthService.instance.requireToken();
+    await _apiClient.delete(
+      '/news/$id',
+      bearerToken: token,
+    );
+  }
+
   Future<void> createNews({
     required String title,
     required String content,
@@ -28,6 +46,24 @@ class NewsService {
     final String token = await AuthService.instance.requireToken();
     await _apiClient.post(
       '/news',
+      bearerToken: token,
+      body: <String, dynamic>{
+        'title': title,
+        'content': content,
+        'header_image_url': headerImageUrl,
+      },
+    );
+  }
+
+  Future<void> updateNews({
+    required String id,
+    required String title,
+    required String content,
+    String headerImageUrl = '',
+  }) async {
+    final String token = await AuthService.instance.requireToken();
+    await _apiClient.put(
+      '/news/$id',
       bearerToken: token,
       body: <String, dynamic>{
         'title': title,

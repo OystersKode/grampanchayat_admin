@@ -4,11 +4,13 @@ import 'package:flutter_quill/flutter_quill.dart';
 import 'admin/services/auth_service.dart';
 import 'admin/services/member_requests_service.dart';
 import 'admin/services/news_service.dart';
+import 'admin/services/wishes_service.dart';
 import 'admin/screens/admin_login_screen.dart';
 
 void main() {
   AuthService.initialize();
   NewsService.initialize();
+  WishesService.initialize();
   MemberRequestsService.initialize();
   runApp(const MyApp());
 }

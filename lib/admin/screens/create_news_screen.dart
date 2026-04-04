@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:markdown_quill/markdown_quill.dart';
 import '../services/news_service.dart';
+import '../widgets/admin_drawer.dart';
 
 class CreateNewsScreen extends StatefulWidget {
   const CreateNewsScreen({super.key});
@@ -16,11 +19,107 @@ class CreateNewsScreen extends StatefulWidget {
 class _CreateNewsScreenState extends State<CreateNewsScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _categoryController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   final TextEditingController _imageUrlController = TextEditingController();
   final QuillController _controller = QuillController.basic();
   XFile? _selectedImage;
   final ImagePicker _picker = ImagePicker();
   bool _isSubmitting = false;
+  bool _showPreview = false;
+  String? _editingId;
+  List<Map<String, dynamic>> _allNews = [];
+  List<Map<String, dynamic>> _filteredNews = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchNews();
+  }
+
+  Future<void> _fetchNews() async {
+    try {
+      final news = await NewsService.instance.fetchNews();
+      setState(() {
+        _allNews = news;
+        _filteredNews = news;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load news: $e')),
+        );
+      }
+    }
+  }
+
+  void _filterNews(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredNews = _allNews;
+      } else {
+        _filteredNews = _allNews
+            .where((news) => (news['title'] ?? '').toString().toLowerCase().contains(query.toLowerCase()))
+            .toList();
+      }
+    });
+  }
+
+  void _editNews(Map<String, dynamic> news) {
+    setState(() {
+      _editingId = news['id'].toString();
+      _titleController.text = news['title'] ?? '';
+      _categoryController.text = news['category'] ?? '';
+      _imageUrlController.text = news['header_image_url'] ?? '';
+      _selectedImage = null;
+
+      // Simple plain text to quill document (basic implementation)
+      final String content = news['content'] ?? '';
+      _controller.document = Document()..insert(0, content);
+    });
+    // Scroll to top
+    // Primary ScrollController could be used here
+  }
+
+  Future<void> _deleteNews(String id) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Delete'),
+        content: const Text('Are you sure you want to delete this news item?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await NewsService.instance.deleteNews(id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('News deleted successfully')),
+          );
+          _fetchNews();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to delete: $e')),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _submitNews() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -31,6 +130,10 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
       );
       return;
     }
+    
+    final mdEncoder = DeltaToMarkdown();
+    final String markdownContent = mdEncoder.convert(_controller.document.toDelta());
+
     String imageUrl = _imageUrlController.text.trim();
     if (imageUrl.isEmpty && _selectedImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -54,21 +157,32 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
         imageUrl = await NewsService.instance.uploadImageBase64(dataUri);
       }
 
-      await NewsService.instance.createNews(
-        title: _titleController.text.trim(),
-        content: _controller.document.toPlainText().trim(),
-        headerImageUrl: imageUrl,
-      );
+      if (_editingId != null) {
+        await NewsService.instance.updateNews(
+          id: _editingId!,
+          title: _titleController.text.trim(),
+          content: markdownContent,
+          headerImageUrl: imageUrl,
+        );
+      } else {
+        await NewsService.instance.createNews(
+          title: _titleController.text.trim(),
+          content: markdownContent,
+          headerImageUrl: imageUrl,
+        );
+      }
+
       if (!mounted) {
         return;
       }
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('News created successfully!')),
+        SnackBar(content: Text(_editingId != null ? 'News updated successfully!' : 'News created successfully!')),
       );
-      Navigator.pop(context);
+      _clearForm();
+      _fetchNews();
     } catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to create news: $error')),
+        SnackBar(content: Text('Failed to save news: $error')),
       );
     } finally {
       if (mounted) {
@@ -77,6 +191,17 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
         });
       }
     }
+  }
+
+  void _clearForm() {
+    _titleController.clear();
+    _categoryController.clear();
+    _imageUrlController.clear();
+    _controller.clear();
+    setState(() {
+      _selectedImage = null;
+      _editingId = null;
+    });
   }
 
 
@@ -100,6 +225,8 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
   @override
   void dispose() {
     _titleController.dispose();
+    _categoryController.dispose();
+    _searchController.dispose();
     _imageUrlController.dispose();
     _controller.dispose();
     super.dispose();
@@ -113,6 +240,7 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
 
     return Scaffold(
       backgroundColor: backgroundColor,
+      drawer: const AdminDrawer(),
       appBar: AppBar(
         backgroundColor: backgroundColor,
         elevation: 0,
@@ -125,9 +253,11 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
             fontSize: 22,
           ),
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: primaryMaroon, size: 20),
-          onPressed: () => Navigator.pop(context),
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: primaryMaroon),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
         ),
       ),
       body: SafeArea(
@@ -158,6 +288,13 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
                           controller: _titleController,
                           decoration: _buildInputDecoration('Enter news title'),
                           validator: (value) => value == null || value.isEmpty ? 'Please enter a title' : null,
+                        ),
+                        const SizedBox(height: 24),
+
+                        _buildLabel('Category'),
+                        TextFormField(
+                          controller: _categoryController,
+                          decoration: _buildInputDecoration('e.g. Health, Agriculture, Education'),
                         ),
                         const SizedBox(height: 24),
 
@@ -227,59 +364,203 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
                         const SizedBox(height: 24),
 
                         _buildLabel('Description'),
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: borderColor, width: 1.5),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              QuillSimpleToolbar(
-                                controller: _controller,
-                                config: const QuillSimpleToolbarConfig(
-                                  showFontFamily: false,
-                                  showFontSize: false,
-                                  showColorButton: false,
-                                  showBackgroundColorButton: false,
-                                  showListBullets: true,
-                                  showListNumbers: true,
-                                  showQuote: true,
-                                  showIndent: false,
-                                  showLink: true,
-                                  showSearchButton: false,
-                                  showSubscript: false,
-                                  showSuperscript: false,
-                                  showHeaderStyle: true,
-                                  showBoldButton: true,
-                                  showItalicButton: true,
-                                  showUnderLineButton: true,
-                                  showStrikeThrough: false,
-                                  showInlineCode: true,
-                                  showCodeBlock: true,
-                                  showAlignmentButtons: false,
-                                  showDirection: false,
-                                  multiRowsDisplay: false,
-                                ),
-                              ),
-                              const Divider(height: 1, color: borderColor),
-                              Container(
-                                padding: const EdgeInsets.all(16),
-                                constraints: const BoxConstraints(minHeight: 150),
-                                child: QuillEditor.basic(
+                        Row(
+                          children: [
+                            ChoiceChip(
+                              label: const Text('Edit'),
+                              selected: !_showPreview,
+                              onSelected: (val) => setState(() => _showPreview = false),
+                            ),
+                            const SizedBox(width: 8),
+                            ChoiceChip(
+                              label: const Text('Preview'),
+                              selected: _showPreview,
+                              onSelected: (val) => setState(() => _showPreview = true),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        if (_showPreview)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: borderColor, width: 1.5),
+                            ),
+                            child: MarkdownBody(
+                              data: DeltaToMarkdown().convert(_controller.document.toDelta()),
+                              selectable: true,
+                            ),
+                          )
+                        else
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: borderColor, width: 1.5),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                QuillSimpleToolbar(
                                   controller: _controller,
-                                  config: const QuillEditorConfig(
-                                    placeholder: 'Enter news description...',
-                                    autoFocus: false,
-                                    expands: false,
-                                    padding: EdgeInsets.zero,
+                                  config: const QuillSimpleToolbarConfig(
+                                    showFontFamily: false,
+                                    showFontSize: false,
+                                    showColorButton: false,
+                                    showBackgroundColorButton: false,
+                                    showListBullets: true,
+                                    showListNumbers: true,
+                                    showQuote: true,
+                                    showIndent: false,
+                                    showLink: true,
+                                    showSearchButton: false,
+                                    showSubscript: false,
+                                    showSuperscript: false,
+                                    showHeaderStyle: true,
+                                    showBoldButton: true,
+                                    showItalicButton: true,
+                                    showUnderLineButton: true,
+                                    showStrikeThrough: false,
+                                    showInlineCode: true,
+                                    showCodeBlock: true,
+                                    showAlignmentButtons: false,
+                                    showDirection: false,
+                                    multiRowsDisplay: false,
                                   ),
                                 ),
-                              ),
-                            ],
+                                const Divider(height: 1, color: borderColor),
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  constraints: const BoxConstraints(minHeight: 150),
+                                  child: QuillEditor.basic(
+                                    controller: _controller,
+                                    config: const QuillEditorConfig(
+                                      placeholder: 'Enter news description...',
+                                      autoFocus: false,
+                                      expands: false,
+                                      padding: EdgeInsets.zero,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        const SizedBox(height: 40),
+                        const Text(
+                          'RECENTLY ADDED',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.5,
+                            color: Color(0xFFB09491),
                           ),
                         ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _searchController,
+                          onChanged: _filterNews,
+                          decoration: _buildInputDecoration('Search news...').copyWith(
+                            prefixIcon: const Icon(Icons.search, color: Color(0xFFB09491)),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        if (_filteredNews.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.all(32),
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFFE3BEB8)),
+                            ),
+                            child: const Column(
+                              children: [
+                                Icon(Icons.newspaper, size: 48, color: Color(0xFFD6A2A2)),
+                                SizedBox(height: 12),
+                                Text(
+                                  'No news found',
+                                  style: TextStyle(color: Color(0xFF8E706B)),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          ListView.separated(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _filteredNews.length,
+                            separatorBuilder: (context, index) => const SizedBox(height: 12),
+                            itemBuilder: (context, index) {
+                              final news = _filteredNews[index];
+                              final String title = news['title'] ?? '';
+                              final String content = news['content'] ?? '';
+                              final String? imageUrl = news['header_image_url'];
+                              final String id = news['id'].toString();
+
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFFE3BEB8)),
+                                ),
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.all(12),
+                                  leading: imageUrl != null && imageUrl.isNotEmpty
+                                      ? ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Image.network(
+                                            imageUrl,
+                                            width: 60,
+                                            height: 60,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) => Container(
+                                              width: 60,
+                                              height: 60,
+                                              color: Colors.grey[200],
+                                              child: const Icon(Icons.image_not_supported),
+                                            ),
+                                          ),
+                                        )
+                                      : Container(
+                                          width: 60,
+                                          height: 60,
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey[100],
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: const Icon(Icons.image, color: Colors.grey),
+                                        ),
+                                  title: Text(
+                                    title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  subtitle: Text(
+                                    content,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.edit_outlined, color: Colors.blue),
+                                        onPressed: () => _editNews(news),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                        onPressed: () => _deleteNews(id),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
                         const SizedBox(height: 100),
                       ],
                     ),
@@ -312,9 +593,9 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
                     width: 20,
                     child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                   )
-                : const Text(
-                    'POST NEWS',
-                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.2),
+                : Text(
+                    _editingId != null ? 'UPDATE NEWS' : 'POST NEWS',
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.2),
                   ),
           ),
         ),

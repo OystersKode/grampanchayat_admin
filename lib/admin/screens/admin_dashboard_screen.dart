@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'create_news_screen.dart';
 import 'create_wishes_screen.dart';
 import 'admin_login_screen.dart';
 import 'member_requests_screen.dart';
+import '../widgets/admin_drawer.dart';
 import '../services/auth_service.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -41,6 +43,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     return Scaffold(
       backgroundColor: backgroundColor,
+      drawer: const AdminDrawer(),
       appBar: AppBar(
         backgroundColor: backgroundColor,
         elevation: 0,
@@ -168,6 +171,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       ),
                     ),
                     const SizedBox(height: 48),
+                    _buildLikesChart(),
+                    const SizedBox(height: 48),
                     const Divider(color: Color(0xFFF1F1F1)),
                     const SizedBox(height: 24),
                     TextButton.icon(
@@ -236,6 +241,94 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildLikesChart() {
+    const Color primaryMaroon = Color(0xFF8B0000);
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _statsFuture,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const SizedBox.shrink();
+        
+        final List<dynamic> likesPerCategory = snapshot.data!['likes_per_category'] ?? [];
+        if (likesPerCategory.isEmpty) return const Center(child: Text("No likes data available"));
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'LIKES PER CATEGORY',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.2,
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              height: 200,
+              child: BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: _getMaxY(likesPerCategory),
+                  barTouchData: BarTouchData(enabled: false),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          int index = value.toInt();
+                          if (index >= 0 && index < likesPerCategory.length) {
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(
+                                likesPerCategory[index]['category'].toString().substring(0, 3).toUpperCase(),
+                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
+                            );
+                          }
+                          return const Text('');
+                        },
+                      ),
+                    ),
+                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  ),
+                  gridData: const FlGridData(show: false),
+                  borderData: FlBorderData(show: false),
+                  barGroups: likesPerCategory.asMap().entries.map((entry) {
+                    return BarChartGroupData(
+                      x: entry.key,
+                      barRods: [
+                        BarChartRodData(
+                          toY: (entry.value['likes'] as num).toDouble(),
+                          color: primaryMaroon,
+                          width: 16,
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                        ),
+                      ],
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  double _getMaxY(List<dynamic> data) {
+    double max = 5;
+    for (var item in data) {
+      if ((item['likes'] as num).toDouble() > max) {
+        max = (item['likes'] as num).toDouble();
+      }
+    }
+    return max + 2;
   }
 
   Widget _buildDashboardItem(

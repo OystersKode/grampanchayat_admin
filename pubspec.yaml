@@ -36,10 +36,14 @@ dependencies:
   cupertino_icons: ^1.0.8
   image_picker: ^1.2.1
   flutter_quill: ^11.5.0
+  flutter_secure_storage: ^9.2.4
+  flutter_markdown: ^0.7.5
+  fl_chart: ^0.71.0
   flutter_localizations:
     sdk: flutter
   http: ^1.2.2
   shared_preferences: ^2.3.2
+  markdown_quill: ^4.3.0
 
 dev_dependencies:
   flutter_test:
