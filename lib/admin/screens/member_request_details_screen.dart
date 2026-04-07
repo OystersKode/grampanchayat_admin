@@ -14,9 +14,7 @@ class _MemberRequestDetailsScreenState extends State<MemberRequestDetailsScreen>
   bool _isProcessing = false;
 
   Future<void> _handleStatusUpdate(String status) async {
-    final int id = (widget.request['id'] is int)
-        ? widget.request['id'] as int
-        : int.tryParse('${widget.request['id']}') ?? 0;
+    final String id = widget.request['id'].toString();
 
     setState(() => _isProcessing = true);
 

@@ -4,7 +4,7 @@ import '../screens/create_news_screen.dart';
 import '../screens/create_wishes_screen.dart';
 import '../screens/member_requests_screen.dart';
 import '../screens/admin_login_screen.dart';
-import '../services/auth_service.dart';
+import '../services/auth_service.dart' as firebase_auth_service;
 
 class AdminDrawer extends StatelessWidget {
   const AdminDrawer({super.key});
@@ -12,6 +12,7 @@ class AdminDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const Color primaryMaroon = Color(0xFF8B0000);
+    final firebase_auth_service.AuthService authService = firebase_auth_service.AuthService.instance;
 
     return Drawer(
       child: Column(
@@ -26,7 +27,7 @@ class AdminDrawer extends StatelessWidget {
               'Admin User',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            accountEmail: const Text('admin@grampanchayat.gov.in'),
+            accountEmail: Text(authService.getCurrentUser()?.email ?? 'admin@grampanchayat.gov.in'),
           ),
           ListTile(
             leading: const Icon(Icons.dashboard),
@@ -78,7 +79,7 @@ class AdminDrawer extends StatelessWidget {
             leading: const Icon(Icons.logout, color: Colors.red),
             title: const Text('Logout', style: TextStyle(color: Colors.red)),
             onTap: () async {
-              await AuthService.instance.logout();
+              await authService.logout();
               if (context.mounted) {
                 Navigator.pushAndRemoveUntil(
                   context,

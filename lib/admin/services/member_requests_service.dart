@@ -1,44 +1,44 @@
-import '../config/app_config.dart';
-import 'api_client.dart';
-import 'auth_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MemberRequestsService {
-  MemberRequestsService._(this._apiClient);
+  MemberRequestsService._();
 
-  static MemberRequestsService? _instance;
-  final ApiClient _apiClient;
+  static final MemberRequestsService _instance = MemberRequestsService._();
+  static MemberRequestsService get instance => _instance;
 
-  static void initialize() {
-    _instance = MemberRequestsService._(ApiClient(baseUrl: AppConfig.apiV1BaseUrl));
-  }
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  static MemberRequestsService get instance {
-    final MemberRequestsService? service = _instance;
-    if (service == null) {
-      throw StateError('MemberRequestsService.initialize() must be called before use');
-    }
-    return service;
-  }
+  static void initialize() {}
 
   Future<List<Map<String, dynamic>>> fetchRequests() async {
-    final String token = await AuthService.instance.requireToken();
-    final Map<String, dynamic> payload = await _apiClient.get(
-      '/member-requests',
-      bearerToken: token,
-    );
-    final List<dynamic> rows = (payload['data'] as List<dynamic>?) ?? <dynamic>[];
-    return rows.whereType<Map<String, dynamic>>().toList();
+    final snapshot = await _db.collection('member_requests')
+        .orderBy('created_at', descending: true)
+        .get();
+    
+    return snapshot.docs.map((doc) {
+      final data = doc.data();
+      return {
+        ...data,
+        'id': doc.id,
+      };
+    }).toList();
   }
 
   Future<void> updateStatus({
-    required int id,
+    required String id,
     required String status,
   }) async {
-    final String token = await AuthService.instance.requireToken();
-    await _apiClient.put(
-      '/member-request/$id',
-      bearerToken: token,
-      body: <String, dynamic>{'status': status},
-    );
+    await _db.collection('member_requests').doc(id).update({
+      'status': status,
+      'updated_at': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> createMemberRequest(Map<String, dynamic> data) async {
+    await _db.collection('member_requests').add({
+      ...data,
+      'status': 'pending',
+      'created_at': FieldValue.serverTimestamp(),
+    });
   }
 }

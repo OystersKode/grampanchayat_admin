@@ -1,33 +1,28 @@
-import '../config/app_config.dart';
-import 'api_client.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'auth_service.dart';
 
 class WishesService {
-  WishesService._(this._apiClient);
+  WishesService._();
 
-  static WishesService? _instance;
-  final ApiClient _apiClient;
+  static final WishesService _instance = WishesService._();
+  static WishesService get instance => _instance;
 
-  static void initialize() {
-    _instance = WishesService._(ApiClient(baseUrl: AppConfig.apiV1BaseUrl));
-  }
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  static WishesService get instance {
-    final WishesService? service = _instance;
-    if (service == null) {
-      throw StateError('WishesService.initialize() must be called before use');
-    }
-    return service;
-  }
+  static void initialize() {}
 
   Future<List<Map<String, dynamic>>> fetchWishes() async {
-    final String? token = await AuthService.instance.getToken();
-    final Map<String, dynamic> payload = await _apiClient.get(
-      '/wishes',
-      bearerToken: token,
-    );
-    final List<dynamic> rows = (payload['data'] as List<dynamic>?) ?? <dynamic>[];
-    return rows.whereType<Map<String, dynamic>>().toList();
+    final snapshot = await _db.collection('wishes')
+        .orderBy('created_at', descending: true)
+        .get();
+    
+    return snapshot.docs.map((doc) {
+      final data = doc.data();
+      return {
+        ...data,
+        'id': doc.id,
+      };
+    }).toList();
   }
 
   Future<void> createWish({
@@ -36,17 +31,16 @@ class WishesService {
     String headerImageUrl = '',
     String tag = '',
   }) async {
-    final String token = await AuthService.instance.requireToken();
-    await _apiClient.post(
-      '/wishes',
-      bearerToken: token,
-      body: <String, dynamic>{
-        'title': title,
-        'content': content,
-        'header_image_url': headerImageUrl,
-        'tag': tag,
-      },
-    );
+    final user = AuthService.instance.getCurrentUser();
+    
+    await _db.collection('wishes').add({
+      'title': title,
+      'content': content,
+      'header_image_url': headerImageUrl,
+      'tag': tag,
+      'created_by': user?.uid,
+      'created_at': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<void> updateWish({
@@ -56,24 +50,16 @@ class WishesService {
     String headerImageUrl = '',
     String tag = '',
   }) async {
-    final String token = await AuthService.instance.requireToken();
-    await _apiClient.put(
-      '/wishes/$id',
-      bearerToken: token,
-      body: <String, dynamic>{
-        'title': title,
-        'content': content,
-        'header_image_url': headerImageUrl,
-        'tag': tag,
-      },
-    );
+    await _db.collection('wishes').doc(id).update({
+      'title': title,
+      'content': content,
+      'header_image_url': headerImageUrl,
+      'tag': tag,
+      'updated_at': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<void> deleteWish(String id) async {
-    final String token = await AuthService.instance.requireToken();
-    await _apiClient.delete(
-      '/wishes/$id',
-      bearerToken: token,
-    );
+    await _db.collection('wishes').doc(id).delete();
   }
 }

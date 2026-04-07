@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown_quill/markdown_quill.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/news_service.dart';
 import '../widgets/admin_drawer.dart';
 
@@ -30,6 +31,7 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
   String? _editingId;
   List<Map<String, dynamic>> _allNews = [];
   List<Map<String, dynamic>> _filteredNews = [];
+  int _selectedDayFilter = -1; // -1: All, 0: Today, 1: Yesterday, 2: Day Before
 
   @override
   void initState() {
@@ -39,10 +41,13 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
 
   Future<void> _fetchNews() async {
     try {
+      // Automatically cleanup news older than 3 days as per requirement
+      await NewsService.instance.cleanupOldNews(3);
+      
       final news = await NewsService.instance.fetchNews();
       setState(() {
         _allNews = news;
-        _filteredNews = news;
+        _applyFilters();
       });
     } catch (e) {
       if (mounted) {
@@ -53,16 +58,40 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
     }
   }
 
-  void _filterNews(String query) {
+  void _applyFilters() {
+    final String query = _searchController.text.toLowerCase();
+    final DateTime now = DateTime.now();
+    final DateTime today = DateTime(now.year, now.month, now.day);
+    
     setState(() {
-      if (query.isEmpty) {
-        _filteredNews = _allNews;
-      } else {
-        _filteredNews = _allNews
-            .where((news) => (news['title'] ?? '').toString().toLowerCase().contains(query.toLowerCase()))
-            .toList();
-      }
+      _filteredNews = _allNews.where((news) {
+        // 1. Search Query Filter
+        final bool matchesSearch = (news['title'] ?? '').toString().toLowerCase().contains(query);
+        if (!matchesSearch) return false;
+
+        // 2. Date Filter
+        if (_selectedDayFilter == -1) return true;
+
+        final dynamic createdAt = news['created_at'];
+        if (createdAt == null) return false;
+        
+        DateTime newsDate;
+        if (createdAt is Timestamp) {
+          newsDate = createdAt.toDate();
+        } else {
+          return false;
+        }
+        
+        final DateTime newsDay = DateTime(newsDate.year, newsDate.month, newsDate.day);
+        final int difference = today.difference(newsDay).inDays;
+        
+        return difference == _selectedDayFilter;
+      }).toList();
     });
+  }
+
+  void _filterNews(String query) {
+    _applyFilters();
   }
 
   void _editNews(Map<String, dynamic> news) {
@@ -450,12 +479,27 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
                           ),
                         const SizedBox(height: 40),
                         const Text(
-                          'RECENTLY ADDED',
+                          'RECENTLY ADDED (LAST 3 DAYS)',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 1.5,
                             color: Color(0xFFB09491),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _buildFilterChip('All', -1),
+                              const SizedBox(width: 8),
+                              _buildFilterChip('Today', 0),
+                              const SizedBox(width: 8),
+                              _buildFilterChip('Yesterday', 1),
+                              const SizedBox(width: 8),
+                              _buildFilterChip('2 Days Ago', 2),
+                            ],
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -600,6 +644,29 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, int value) {
+    final bool isSelected = _selectedDayFilter == value;
+    const Color primaryMaroon = Color(0xFF8B0000);
+    
+    return ChoiceChip(
+      label: Text(label),
+      selected: isSelected,
+      selectedColor: primaryMaroon,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : primaryMaroon,
+        fontWeight: FontWeight.bold,
+      ),
+      onSelected: (bool selected) {
+        if (selected) {
+          setState(() {
+            _selectedDayFilter = value;
+            _applyFilters();
+          });
+        }
+      },
     );
   }
 

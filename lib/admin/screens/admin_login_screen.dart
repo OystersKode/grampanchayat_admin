@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'admin_dashboard_screen.dart';
-import '../services/auth_service.dart';
+import '../services/auth_service.dart' as firebase_auth_service;
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
@@ -12,8 +12,9 @@ class AdminLoginScreen extends StatefulWidget {
 class _AdminLoginScreenState extends State<AdminLoginScreen> {
   bool _isPasswordVisible = false;
   bool _isLoading = false;
-  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final firebase_auth_service.AuthService _authService = firebase_auth_service.AuthService.instance;
 
   @override
   void initState() {
@@ -22,29 +23,31 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
   }
 
   Future<void> _checkAutoLogin() async {
-    final token = await AuthService.instance.getToken();
-    if (token != null && token.isNotEmpty) {
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
-        );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = _authService.getCurrentUser();
+      if (user != null) {
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
+          );
+        }
       }
-    }
+    });
   }
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   Future<void> _login() async {
-    final String username = _usernameController.text.trim();
+    final String email = _emailController.text.trim();
     final String password = _passwordController.text.trim();
-    if (username.isEmpty || password.isEmpty) {
-      _showMessage('Please enter username and password');
+    if (email.isEmpty || password.isEmpty) {
+      _showMessage('Please enter email and password');
       return;
     }
 
@@ -53,7 +56,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
     });
 
     try {
-      await AuthService.instance.login(username: username, password: password);
+      await _authService.loginAdmin(email: email, password: password);
       if (!mounted) {
         return;
       }
@@ -165,7 +168,7 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                           
                           // GP Identity
                           const Text(
-                            'GP IDENTITY',
+                            'ADMIN EMAIL',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
@@ -175,10 +178,10 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                           ),
                           const SizedBox(height: 8),
                           TextField(
-                            controller: _usernameController,
+                            controller: _emailController,
                             decoration: InputDecoration(
-                              hintText: 'Enter GP Identity',
-                              prefixIcon: const Icon(Icons.person, color: Colors.grey),
+                              hintText: 'Enter Admin Email',
+                              prefixIcon: const Icon(Icons.email, color: Colors.grey),
                               filled: true,
                               fillColor: fieldFillColor,
                               border: OutlineInputBorder(

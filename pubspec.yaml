@@ -44,6 +44,9 @@ dependencies:
   http: ^1.2.2
   shared_preferences: ^2.3.2
   markdown_quill: ^4.3.0
+  firebase_core: ^3.10.1
+  firebase_auth: ^5.4.1
+  cloud_firestore: ^5.6.1
 
 dev_dependencies:
   flutter_test:

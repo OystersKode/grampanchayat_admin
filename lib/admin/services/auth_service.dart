@@ -1,69 +1,134 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-
-import '../config/app_config.dart';
-import 'api_client.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
-  AuthService._(this._apiClient);
+  AuthService._();
 
-  static AuthService? _instance;
-  static const String _tokenKey = 'admin_token';
-  final ApiClient _apiClient;
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  static final AuthService _instance = AuthService._();
+  static AuthService get instance => _instance;
 
-  static void initialize() {
-    _instance = AuthService._(ApiClient(baseUrl: AppConfig.apiV1BaseUrl));
-  }
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  static AuthService get instance {
-    final AuthService? service = _instance;
-    if (service == null) {
-      throw StateError('AuthService.initialize() must be called before use');
+  // Placeholder for initialization if needed by main.dart
+  static void initialize() {}
+
+  // ADMIN REGISTER
+  Future<User?> registerAdmin({
+    required String email,
+    required String password,
+    required String village,
+    required String district,
+    required String taluka,
+  }) async {
+    try {
+      UserCredential result = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      User? user = result.user;
+
+      if (user != null) {
+        await _firestore.collection('admins').doc(user.uid).set({
+          'email': email,
+          'village_name': village,
+          'district': district,
+          'taluka': taluka,
+          'role': 'admin',
+          'created_at': FieldValue.serverTimestamp(),
+        });
+      }
+      return user;
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    } catch (e) {
+      throw Exception('An unexpected error occurred during registration.');
     }
-    return service;
   }
 
-  Future<void> login({
-    required String username,
+  // ADMIN LOGIN (Renamed from login to match your request, but keeping 'login' alias for compatibility)
+  Future<User?> loginAdmin({
+    required String email,
     required String password,
   }) async {
-    final Map<String, dynamic> payload = await _apiClient.post(
-      '/admin/login',
-      body: <String, dynamic>{
-        'username': username,
-        'password': password,
-      },
-    );
-
-    final Object? token = payload['token'];
-    if (token is! String || token.isEmpty) {
-      throw Exception('Invalid login response: missing token');
+    try {
+      UserCredential result = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      return result.user;
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    } catch (e) {
+      throw Exception('An unexpected error occurred during login.');
     }
-    await _storage.write(key: _tokenKey, value: token);
   }
 
+  // Compatibility alias for existing code
+  Future<void> login({required String username, required String password}) async {
+    // Note: username is treated as email in Firebase Auth context here
+    await loginAdmin(email: username, password: password);
+  }
+
+  // GUEST LOGIN
+  Future<User?> signInGuest() async {
+    try {
+      UserCredential result = await _auth.signInAnonymously();
+      User? user = result.user;
+
+      if (user != null) {
+        await _firestore.collection('guest_users').doc(user.uid).set({
+          'device_id': user.uid,
+          'role': 'guest',
+          'created_at': FieldValue.serverTimestamp(),
+        });
+      }
+      return user;
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    } catch (e) {
+      throw Exception('An unexpected error occurred during guest login.');
+    }
+  }
+
+  // CURRENT USER
+  User? getCurrentUser() {
+    return _auth.currentUser;
+  }
+
+  // Compatibility methods for token-based services
   Future<String?> getToken() async {
-    return await _storage.read(key: _tokenKey);
+    return await _auth.currentUser?.getIdToken();
   }
 
   Future<String> requireToken() async {
     final String? token = await getToken();
-    if (token == null || token.isEmpty) {
+    if (token == null) {
       throw Exception('Admin session not found. Please login again.');
     }
     return token;
   }
 
-  Future<Map<String, dynamic>> getDashboardStats() async {
-    final String token = await requireToken();
-    final Map<String, dynamic> payload = await _apiClient.get(
-      '/admin/dashboard',
-      bearerToken: token,
-    );
-    return (payload['data'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+  // LOGOUT
+  Future<void> logout() async {
+    await _auth.signOut();
   }
 
-  Future<void> logout() async {
-    await _storage.delete(key: _tokenKey);
+  // Error handling
+  String _handleAuthException(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'weak-password':
+        return 'The password provided is too weak.';
+      case 'email-already-in-use':
+        return 'The account already exists for that email.';
+      case 'user-not-found':
+        return 'No user found for that email.';
+      case 'wrong-password':
+        return 'Wrong password provided for that user.';
+      case 'invalid-email':
+        return 'The email address is not valid.';
+      default:
+        return e.message ?? 'An unknown authentication error occurred.';
+    }
   }
 }

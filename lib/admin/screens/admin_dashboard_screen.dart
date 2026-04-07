@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'create_news_screen.dart';
 import 'create_wishes_screen.dart';
 import 'admin_login_screen.dart';
 import 'member_requests_screen.dart';
 import '../widgets/admin_drawer.dart';
-import '../services/auth_service.dart';
+import '../services/auth_service.dart' as firebase_auth_service;
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -16,15 +17,57 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   late Future<Map<String, dynamic>> _statsFuture;
+  final firebase_auth_service.AuthService _authService = firebase_auth_service.AuthService.instance;
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
 
   @override
   void initState() {
     super.initState();
-    _statsFuture = AuthService.instance.getDashboardStats();
+    _statsFuture = _fetchDashboardStats();
+  }
+
+  Future<Map<String, dynamic>> _fetchDashboardStats() async {
+    try {
+      final usersQuery = await _db.collection('guest_users').get();
+      final newsQuery = await _db.collection('news').get();
+      final likesQuery = await _db.collection('likes').get();
+      final pendingRequestsQuery = await _db.collection('member_requests')
+          .where('status', isEqualTo: 'pending')
+          .get();
+
+      // Simple category-based likes aggregation (example logic)
+      final Map<String, int> categories = {};
+      for (var doc in likesQuery.docs) {
+        final type = doc.data()['content_type'] ?? 'unknown';
+        categories[type] = (categories[type] ?? 0) + 1;
+      }
+
+      final List<Map<String, dynamic>> likesPerCategory = categories.entries.map((e) => {
+        'category': e.key,
+        'likes': e.value,
+      }).toList();
+
+      return {
+        'total_users': usersQuery.size,
+        'total_news': newsQuery.size,
+        'total_likes': likesQuery.size,
+        'pending_requests': pendingRequestsQuery.size,
+        'likes_per_category': likesPerCategory,
+      };
+    } catch (e) {
+      print('Error fetching stats: $e');
+      return {
+        'total_users': 0,
+        'total_news': 0,
+        'total_likes': 0,
+        'pending_requests': 0,
+        'likes_per_category': [],
+      };
+    }
   }
 
   Future<void> _logout() async {
-    await AuthService.instance.logout();
+    await _authService.logout();
     if (!mounted) {
       return;
     }

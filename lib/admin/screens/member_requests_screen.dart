@@ -75,9 +75,7 @@ class _MemberRequestsScreenState extends State<MemberRequestsScreen> {
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (BuildContext context, int index) {
               final Map<String, dynamic> row = rows[index];
-              final int id = (row['id'] is int)
-                  ? row['id'] as int
-                  : int.tryParse('${row['id']}') ?? 0;
+              final String id = row['id'].toString();
               final String name = '${row['name'] ?? '-'}';
               final String phone = '${row['mobile_number'] ?? '-'}';
               final String address = '${row['address'] ?? '-'}';

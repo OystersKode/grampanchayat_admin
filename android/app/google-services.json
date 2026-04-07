@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "638955132197",
+    "project_id": "grampanchayat-64901",
+    "storage_bucket": "grampanchayat-64901.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:638955132197:android:dbc733119dff10cd7536cc",
+        "android_client_info": {
+          "package_name": "com.example.grampanchayat_admin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBVdXRM9rQdMmIgkplfiTTK68nlZDIMOTc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:638955132197:android:58d3fd3355862bd57536cc",
+        "android_client_info": {
+          "package_name": "com.example.grampanchayat_user"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBVdXRM9rQdMmIgkplfiTTK68nlZDIMOTc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
