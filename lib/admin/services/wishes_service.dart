@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloudinary_public/cloudinary_public.dart';
 import 'auth_service.dart';
 
 class WishesService {
@@ -8,6 +9,12 @@ class WishesService {
   static WishesService get instance => _instance;
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  final cloudinary = CloudinaryPublic(
+    'dv3u8watu', 
+    'ml_default', 
+    cache: false,
+  );
 
   static void initialize() {}
 
@@ -61,5 +68,17 @@ class WishesService {
 
   Future<void> deleteWish(String id) async {
     await _db.collection('wishes').doc(id).delete();
+  }
+
+  Future<String> uploadImage(String imagePath) async {
+    try {
+      CloudinaryResponse response = await cloudinary.uploadFile(
+        CloudinaryFile.fromFile(imagePath, resourceType: CloudinaryResourceType.Image),
+      );
+      return response.secureUrl;
+    } catch (e) {
+      print('Cloudinary Upload Error: $e');
+      throw Exception('Failed to upload image to Cloudinary');
+    }
   }
 }

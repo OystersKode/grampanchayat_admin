@@ -25,6 +25,7 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
   final TextEditingController _imageUrlController = TextEditingController();
   final QuillController _controller = QuillController.basic();
   XFile? _selectedImage;
+  List<XFile> _selectedRelatedImages = [];
   final ImagePicker _picker = ImagePicker();
   bool _isSubmitting = false;
   bool _showPreview = false;
@@ -101,6 +102,7 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
       _categoryController.text = news['category'] ?? '';
       _imageUrlController.text = news['header_image_url'] ?? '';
       _selectedImage = null;
+      _selectedRelatedImages = [];
 
       // Simple plain text to quill document (basic implementation)
       final String content = news['content'] ?? '';
@@ -179,11 +181,13 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
 
     try {
       if (_selectedImage != null) {
-        final List<int> bytes = await _selectedImage!.readAsBytes();
-        final String mimeType = _guessMimeType(_selectedImage!.name);
-        final String base64Image = base64Encode(bytes);
-        final String dataUri = 'data:$mimeType;base64,$base64Image';
-        imageUrl = await NewsService.instance.uploadImageBase64(dataUri);
+        imageUrl = await NewsService.instance.uploadImage(_selectedImage!.path);
+      }
+
+      List<String> relatedImageUrls = [];
+      for (var xFile in _selectedRelatedImages) {
+        final String url = await NewsService.instance.uploadImage(xFile.path);
+        relatedImageUrls.add(url);
       }
 
       if (_editingId != null) {
@@ -192,12 +196,14 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
           title: _titleController.text.trim(),
           content: markdownContent,
           headerImageUrl: imageUrl,
+          relatedImageUrls: relatedImageUrls,
         );
       } else {
         await NewsService.instance.createNews(
           title: _titleController.text.trim(),
           content: markdownContent,
           headerImageUrl: imageUrl,
+          relatedImageUrls: relatedImageUrls,
         );
       }
 
@@ -229,6 +235,7 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
     _controller.clear();
     setState(() {
       _selectedImage = null;
+      _selectedRelatedImages = [];
       _editingId = null;
     });
   }
@@ -246,6 +253,23 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error picking image: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickRelatedImages() async {
+    try {
+      final List<XFile> pickedFiles = await _picker.pickMultiImage();
+      if (pickedFiles.isNotEmpty) {
+        setState(() {
+          _selectedRelatedImages.addAll(pickedFiles);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking images: $e')),
         );
       }
     }
@@ -389,6 +413,64 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
                             }
                             return null;
                           },
+                        ),
+                        const SizedBox(height: 24),
+
+                        _buildLabel('Related Images'),
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFE3BEB8)),
+                          ),
+                          child: Column(
+                            children: [
+                              if (_selectedRelatedImages.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: _selectedRelatedImages.asMap().entries.map((entry) {
+                                      final index = entry.key;
+                                      final file = entry.value;
+                                      return Stack(
+                                        children: [
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: kIsWeb
+                                                ? Image.network(file.path, width: 80, height: 80, fit: BoxFit.cover)
+                                                : Image.file(File(file.path), width: 80, height: 80, fit: BoxFit.cover),
+                                          ),
+                                          Positioned(
+                                            right: -4,
+                                            top: -4,
+                                            child: IconButton(
+                                              icon: const Icon(Icons.cancel, color: Colors.red, size: 20),
+                                              onPressed: () {
+                                                setState(() {
+                                                  _selectedRelatedImages.removeAt(index);
+                                                });
+                                              },
+                                            ),
+                                          ),
+                                        ],
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                              TextButton.icon(
+                                onPressed: _pickRelatedImages,
+                                icon: const Icon(Icons.add_photo_alternate, color: primaryMaroon),
+                                label: const Text(
+                                  'Add More Images',
+                                  style: TextStyle(color: primaryMaroon, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 24),
 

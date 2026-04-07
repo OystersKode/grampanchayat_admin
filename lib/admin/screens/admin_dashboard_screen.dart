@@ -35,24 +35,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           .where('status', isEqualTo: 'pending')
           .get();
 
-      // Simple category-based likes aggregation (example logic)
-      final Map<String, int> categories = {};
-      for (var doc in likesQuery.docs) {
-        final type = doc.data()['content_type'] ?? 'unknown';
-        categories[type] = (categories[type] ?? 0) + 1;
-      }
-
-      final List<Map<String, dynamic>> likesPerCategory = categories.entries.map((e) => {
-        'category': e.key,
-        'likes': e.value,
-      }).toList();
-
       return {
         'total_users': usersQuery.size,
         'total_news': newsQuery.size,
         'total_likes': likesQuery.size,
         'pending_requests': pendingRequestsQuery.size,
-        'likes_per_category': likesPerCategory,
       };
     } catch (e) {
       print('Error fetching stats: $e');
@@ -61,7 +48,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         'total_news': 0,
         'total_likes': 0,
         'pending_requests': 0,
-        'likes_per_category': [],
       };
     }
   }
@@ -159,23 +145,29 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       builder: (BuildContext context, AsyncSnapshot<Map<String, dynamic>> snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {
                           return const Padding(
-                            padding: EdgeInsets.only(bottom: 16),
+                            padding: EdgeInsets.symmetric(vertical: 20),
                             child: LinearProgressIndicator(),
                           );
                         }
                         final Map<String, dynamic> data = snapshot.data ?? <String, dynamic>{};
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 20),
-                          child: Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              _chip('Users: ${data['total_users'] ?? 0}'),
-                              _chip('News: ${data['total_news'] ?? 0}'),
-                              _chip('Likes: ${data['total_likes'] ?? 0}'),
-                              _chip('Pending: ${data['pending_requests'] ?? 0}'),
-                            ],
-                          ),
+                        return Column(
+                          children: [
+                            GridView.count(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 16,
+                              childAspectRatio: 2.2,
+                              children: [
+                                _statCard('Total Users', '${data['total_users'] ?? 0}', Icons.people_outline, primaryMaroon),
+                                _statCard('Total News', '${data['total_news'] ?? 0}', Icons.newspaper, const Color(0xFF5A403C)),
+                                _statCard('Total Likes', '${data['total_likes'] ?? 0}', Icons.favorite_border, primaryMaroon),
+                                _statCard('Pending', '${data['pending_requests'] ?? 0}', Icons.pending_actions, const Color(0xFF5A403C)),
+                              ],
+                            ),
+                            const SizedBox(height: 32),
+                          ],
                         );
                       },
                     ),
@@ -209,8 +201,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       ),
                     ),
                     const SizedBox(height: 48),
-                    _buildLikesChart(),
-                    const SizedBox(height: 48),
                     const Divider(color: Color(0xFFF1F1F1)),
                     const SizedBox(height: 24),
                     TextButton.icon(
@@ -238,135 +228,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   color: Color(0xFFB09491),
                 ),
               ),
-              const SizedBox(height: 64),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.account_balance, size: 12, color: textColor.withOpacity(0.5)),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Grampanchayat Administrative Hub',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: textColor.withOpacity(0.6),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                '© 2026 DEPARTMENT OF PANCHAYATI RAJ',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: textColor.withOpacity(0.7),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _footerLink('SECURITY PROTOCOL'),
-                  const SizedBox(width: 16),
-                  _footerLink('PRIVACY POLICY'),
-                  const SizedBox(width: 16),
-                  _footerLink('SYSTEM STATUS'),
-                ],
-              ),
               const SizedBox(height: 32),
             ],
           ),
         ),
       ),
     );
-  }
-
-  Widget _buildLikesChart() {
-    const Color primaryMaroon = Color(0xFF8B0000);
-    return FutureBuilder<Map<String, dynamic>>(
-      future: _statsFuture,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) return const SizedBox.shrink();
-        
-        final List<dynamic> likesPerCategory = snapshot.data!['likes_per_category'] ?? [];
-        if (likesPerCategory.isEmpty) return const Center(child: Text("No likes data available"));
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'LIKES PER CATEGORY',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              height: 200,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: _getMaxY(likesPerCategory),
-                  barTouchData: BarTouchData(enabled: false),
-                  titlesData: FlTitlesData(
-                    show: true,
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          int index = value.toInt();
-                          if (index >= 0 && index < likesPerCategory.length) {
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8.0),
-                              child: Text(
-                                likesPerCategory[index]['category'].toString().substring(0, 3).toUpperCase(),
-                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-                              ),
-                            );
-                          }
-                          return const Text('');
-                        },
-                      ),
-                    ),
-                    leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  ),
-                  gridData: const FlGridData(show: false),
-                  borderData: FlBorderData(show: false),
-                  barGroups: likesPerCategory.asMap().entries.map((entry) {
-                    return BarChartGroupData(
-                      x: entry.key,
-                      barRods: [
-                        BarChartRodData(
-                          toY: (entry.value['likes'] as num).toDouble(),
-                          color: primaryMaroon,
-                          width: 16,
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
-                        ),
-                      ],
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  double _getMaxY(List<dynamic> data) {
-    double max = 5;
-    for (var item in data) {
-      if ((item['likes'] as num).toDouble() > max) {
-        max = (item['likes'] as num).toDouble();
-      }
-    }
-    return max + 2;
   }
 
   Widget _buildDashboardItem(
@@ -451,14 +318,51 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
-  Widget _chip(String text) {
+  Widget _statCard(String label, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFBE7E7),
-        borderRadius: BorderRadius.circular(20),
+        color: color.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.1)),
       ),
-      child: Text(text),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: color.withOpacity(0.8),
+                  ),
+                ),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: color.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

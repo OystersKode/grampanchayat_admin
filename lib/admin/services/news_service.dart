@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloudinary_public/cloudinary_public.dart';
 import 'auth_service.dart';
 
 class NewsService {
@@ -8,6 +9,12 @@ class NewsService {
   static NewsService get instance => _instance;
 
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+
+  final cloudinary = CloudinaryPublic(
+    'dv3u8watu', 
+    'ml_default', // We'll need to make sure unsigned upload is enabled or use a preset
+    cache: false,
+  );
 
   // Compatibility for main.dart
   static void initialize() {}
@@ -55,9 +62,9 @@ class NewsService {
     required String title,
     required String content,
     String headerImageUrl = '',
+    List<String> relatedImageUrls = const [],
   }) async {
     final user = AuthService.instance.getCurrentUser();
-    // In a real app, you'd fetch the admin's name from their profile doc
     final adminDoc = await _db.collection('admins').doc(user?.uid).get();
     final adminName = adminDoc.data()?['village_name'] ?? 'Admin';
 
@@ -65,6 +72,7 @@ class NewsService {
       'title': title,
       'content': content,
       'header_image_url': headerImageUrl,
+      'related_image_urls': relatedImageUrls,
       'created_by': user?.uid,
       'created_by_name': adminName,
       'created_at': FieldValue.serverTimestamp(),
@@ -76,23 +84,27 @@ class NewsService {
     required String title,
     required String content,
     String headerImageUrl = '',
+    List<String> relatedImageUrls = const [],
   }) async {
     await _db.collection('news').doc(id).update({
       'title': title,
       'content': content,
       'header_image_url': headerImageUrl,
+      'related_image_urls': relatedImageUrls,
       'updated_at': FieldValue.serverTimestamp(),
     });
   }
 
-  // Firestore doesn't support direct base64 upload to DB (size limits), 
-  // but for this task we'll assume the provided URL is used or we use the URL directly.
-  // In a real Firebase app, we'd use Firebase Storage.
-  // Since the user didn't ask for Storage, I'll keep the signature but return the input if it's already a URL
-  // or a placeholder if it's base64 (or ideally the user provides a URL).
-  Future<String> uploadImageBase64(String imageBase64) async {
-    // For now, return as is or handle logic if needed. 
-    // Usually, you'd upload to Firebase Storage here.
-    return imageBase64;
+  // Upload to Cloudinary
+  Future<String> uploadImage(String imagePath) async {
+    try {
+      CloudinaryResponse response = await cloudinary.uploadFile(
+        CloudinaryFile.fromFile(imagePath, resourceType: CloudinaryResourceType.Image),
+      );
+      return response.secureUrl;
+    } catch (e) {
+      print('Cloudinary Upload Error: $e');
+      throw Exception('Failed to upload image to Cloudinary');
+    }
   }
 }

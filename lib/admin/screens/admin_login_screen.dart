@@ -310,50 +310,6 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
             ),
 
             const SizedBox(height: 60),
-
-            // Footer
-            Padding(
-              padding: const EdgeInsets.only(bottom: 40),
-              child: Column(
-                children: [
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.gavel, color: primaryMaroon, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        'Department of Panchayati Raj',
-                        style: TextStyle(
-                          color: primaryMaroon,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    '© 2026 DEPARTMENT OF PANCHAYATI RAJ',
-                    style: TextStyle(
-                      fontSize: 10,
-                      letterSpacing: 1.0,
-                      color: labelColor,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _footerLink('PRIVACY POLICY'),
-                      const SizedBox(width: 20),
-                      _footerLink('TERMS OF SERVICE'),
-                      const SizedBox(width: 20),
-                      _footerLink('HELP DESK'),
-                    ],
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),

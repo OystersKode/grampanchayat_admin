@@ -41,4 +41,8 @@ class MemberRequestsService {
       'created_at': FieldValue.serverTimestamp(),
     });
   }
+
+  Future<void> deleteRequest(String id) async {
+    await _db.collection('member_requests').doc(id).delete();
+  }
 }

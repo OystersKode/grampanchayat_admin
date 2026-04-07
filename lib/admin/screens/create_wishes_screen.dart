@@ -136,11 +136,7 @@ class _CreateWishesScreenState extends State<CreateWishesScreen> {
     try {
       String imageUrl = '';
       if (_selectedImage != null) {
-        final List<int> bytes = await _selectedImage!.readAsBytes();
-        final String mimeType = _guessMimeType(_selectedImage!.name);
-        final String base64Image = base64Encode(bytes);
-        final String dataUri = 'data:$mimeType;base64,$base64Image';
-        imageUrl = await NewsService.instance.uploadImageBase64(dataUri);
+        imageUrl = await WishesService.instance.uploadImage(_selectedImage!.path);
       }
 
       if (_editingId != null) {
