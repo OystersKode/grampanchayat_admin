@@ -28,6 +28,7 @@ class _CreateWishesScreenState extends State<CreateWishesScreen> {
   bool _isSubmitting = false;
   bool _showPreview = false;
   String? _editingId;
+  DateTime? _scheduledAt;
   List<Map<String, dynamic>> _allWishes = [];
   List<Map<String, dynamic>> _filteredWishes = [];
 
@@ -146,6 +147,7 @@ class _CreateWishesScreenState extends State<CreateWishesScreen> {
           content: markdownContent,
           headerImageUrl: imageUrl,
           tag: _tagController.text.trim(),
+          scheduledAt: _scheduledAt,
         );
       } else {
         await WishesService.instance.createWish(
@@ -153,6 +155,7 @@ class _CreateWishesScreenState extends State<CreateWishesScreen> {
           content: markdownContent,
           headerImageUrl: imageUrl,
           tag: _tagController.text.trim(),
+          scheduledAt: _scheduledAt,
         );
       }
 
@@ -185,6 +188,7 @@ class _CreateWishesScreenState extends State<CreateWishesScreen> {
     setState(() {
       _selectedImage = null;
       _editingId = null;
+      _scheduledAt = null;
     });
   }
 
@@ -209,6 +213,34 @@ class _CreateWishesScreenState extends State<CreateWishesScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error picking image: $e')),
         );
+      }
+    }
+  }
+
+  Future<void> _selectScheduleDate() async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: _scheduledAt ?? DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+
+    if (pickedDate != null) {
+      final TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(_scheduledAt ?? DateTime.now()),
+      );
+
+      if (pickedTime != null) {
+        setState(() {
+          _scheduledAt = DateTime(
+            pickedDate.year,
+            pickedDate.month,
+            pickedDate.day,
+            pickedTime.hour,
+            pickedTime.minute,
+          );
+        });
       }
     }
   }
@@ -336,6 +368,47 @@ class _CreateWishesScreenState extends State<CreateWishesScreen> {
                               onSelected: (val) => setState(() => _showPreview = true),
                             ),
                           ],
+                        ),
+                        const SizedBox(height: 24),
+                        _buildLabel('Scheduling'),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFE3BEB8)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _scheduledAt == null
+                                          ? 'Publish immediately'
+                                          : 'Scheduled for: ${_scheduledAt.toString().substring(0, 16)}',
+                                      style: TextStyle(
+                                        color: _scheduledAt == null ? Colors.grey[600] : primaryMaroon,
+                                        fontWeight: _scheduledAt == null ? FontWeight.normal : FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  if (_scheduledAt != null)
+                                    IconButton(
+                                      icon: const Icon(Icons.clear, color: Colors.red),
+                                      onPressed: () => setState(() => _scheduledAt = null),
+                                    ),
+                                  TextButton.icon(
+                                    onPressed: _selectScheduleDate,
+                                    icon: const Icon(Icons.calendar_today, size: 18),
+                                    label: Text(_scheduledAt == null ? 'Schedule' : 'Change'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 8),
                         if (_showPreview)

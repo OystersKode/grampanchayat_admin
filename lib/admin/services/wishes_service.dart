@@ -37,6 +37,7 @@ class WishesService {
     required String content,
     String headerImageUrl = '',
     String tag = '',
+    DateTime? scheduledAt,
   }) async {
     final user = AuthService.instance.getCurrentUser();
     
@@ -47,6 +48,8 @@ class WishesService {
       'tag': tag,
       'created_by': user?.uid,
       'created_at': FieldValue.serverTimestamp(),
+      'scheduled_at': scheduledAt != null ? Timestamp.fromDate(scheduledAt) : null,
+      'is_published': scheduledAt == null,
     });
   }
 
@@ -56,6 +59,7 @@ class WishesService {
     required String content,
     String headerImageUrl = '',
     String tag = '',
+    DateTime? scheduledAt,
   }) async {
     await _db.collection('wishes').doc(id).update({
       'title': title,
@@ -63,6 +67,8 @@ class WishesService {
       'header_image_url': headerImageUrl,
       'tag': tag,
       'updated_at': FieldValue.serverTimestamp(),
+      'scheduled_at': scheduledAt != null ? Timestamp.fromDate(scheduledAt) : null,
+      'is_published': scheduledAt == null,
     });
   }
 

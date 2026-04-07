@@ -160,9 +160,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               mainAxisSpacing: 16,
                               childAspectRatio: 2.2,
                               children: [
-                                _statCard('Total Users', '${data['total_users'] ?? 0}', Icons.people_outline, primaryMaroon),
+                                _statCard('Total Users', '${data['total_users'] ?? 0}', Icons.people_outline, const Color(0xFF5A403C)),
                                 _statCard('Total News', '${data['total_news'] ?? 0}', Icons.newspaper, const Color(0xFF5A403C)),
-                                _statCard('Total Likes', '${data['total_likes'] ?? 0}', Icons.favorite_border, primaryMaroon),
+                                _statCard('Total Likes', '${data['total_likes'] ?? 0}', Icons.favorite_border, const Color(0xFF5A403C)),
                                 _statCard('Pending', '${data['pending_requests'] ?? 0}', Icons.pending_actions, const Color(0xFF5A403C)),
                               ],
                             ),

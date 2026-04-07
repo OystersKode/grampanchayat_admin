@@ -30,6 +30,7 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
   bool _isSubmitting = false;
   bool _showPreview = false;
   String? _editingId;
+  DateTime? _scheduledAt;
   List<Map<String, dynamic>> _allNews = [];
   List<Map<String, dynamic>> _filteredNews = [];
   int _selectedDayFilter = -1; // -1: All, 0: Today, 1: Yesterday, 2: Day Before
@@ -197,6 +198,7 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
           content: markdownContent,
           headerImageUrl: imageUrl,
           relatedImageUrls: relatedImageUrls,
+          scheduledAt: _scheduledAt,
         );
       } else {
         await NewsService.instance.createNews(
@@ -204,6 +206,7 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
           content: markdownContent,
           headerImageUrl: imageUrl,
           relatedImageUrls: relatedImageUrls,
+          scheduledAt: _scheduledAt,
         );
       }
 
@@ -237,6 +240,7 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
       _selectedImage = null;
       _selectedRelatedImages = [];
       _editingId = null;
+      _scheduledAt = null;
     });
   }
 
@@ -271,6 +275,34 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error picking images: $e')),
         );
+      }
+    }
+  }
+
+  Future<void> _selectScheduleDate() async {
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: _scheduledAt ?? DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+
+    if (pickedDate != null) {
+      final TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(_scheduledAt ?? DateTime.now()),
+      );
+
+      if (pickedTime != null) {
+        setState(() {
+          _scheduledAt = DateTime(
+            pickedDate.year,
+            pickedDate.month,
+            pickedDate.day,
+            pickedTime.hour,
+            pickedTime.minute,
+          );
+        });
       }
     }
   }
@@ -490,6 +522,47 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 24),
+                        _buildLabel('Scheduling'),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFE3BEB8)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      _scheduledAt == null
+                                          ? 'Publish immediately'
+                                          : 'Scheduled for: ${_scheduledAt.toString().substring(0, 16)}',
+                                      style: TextStyle(
+                                        color: _scheduledAt == null ? Colors.grey[600] : primaryMaroon,
+                                        fontWeight: _scheduledAt == null ? FontWeight.normal : FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  if (_scheduledAt != null)
+                                    IconButton(
+                                      icon: const Icon(Icons.clear, color: Colors.red),
+                                      onPressed: () => setState(() => _scheduledAt = null),
+                                    ),
+                                  TextButton.icon(
+                                    onPressed: _selectScheduleDate,
+                                    icon: const Icon(Icons.calendar_today, size: 18),
+                                    label: Text(_scheduledAt == null ? 'Schedule' : 'Change'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         if (_showPreview)
                           Container(
@@ -625,6 +698,8 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
                               final String content = news['content'] ?? '';
                               final String? imageUrl = news['header_image_url'];
                               final String id = news['id'].toString();
+                              final Timestamp? scheduledAt = news['scheduled_at'] as Timestamp?;
+                              final bool isPublished = news['is_published'] ?? true;
 
                               return Container(
                                 decoration: BoxDecoration(
@@ -659,16 +734,45 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
                                           ),
                                           child: const Icon(Icons.image, color: Colors.grey),
                                         ),
-                                  title: Text(
-                                    title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                  title: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          title,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                      if (!isPublished && scheduledAt != null)
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.blue.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(4),
+                                            border: Border.all(color: Colors.blue.withOpacity(0.5)),
+                                          ),
+                                          child: const Text(
+                                            'SCHEDULED',
+                                            style: TextStyle(fontSize: 9, color: Colors.blue, fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                    ],
                                   ),
-                                  subtitle: Text(
-                                    content,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        content,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      if (!isPublished && scheduledAt != null)
+                                        Text(
+                                          'At: ${scheduledAt.toDate().toString().substring(0, 16)}',
+                                          style: const TextStyle(fontSize: 11, color: Colors.blueGrey),
+                                        ),
+                                    ],
                                   ),
                                   trailing: Row(
                                     mainAxisSize: MainAxisSize.min,

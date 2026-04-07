@@ -63,6 +63,7 @@ class NewsService {
     required String content,
     String headerImageUrl = '',
     List<String> relatedImageUrls = const [],
+    DateTime? scheduledAt,
   }) async {
     final user = AuthService.instance.getCurrentUser();
     final adminDoc = await _db.collection('admins').doc(user?.uid).get();
@@ -76,6 +77,8 @@ class NewsService {
       'created_by': user?.uid,
       'created_by_name': adminName,
       'created_at': FieldValue.serverTimestamp(),
+      'scheduled_at': scheduledAt != null ? Timestamp.fromDate(scheduledAt) : null,
+      'is_published': scheduledAt == null,
     });
   }
 
@@ -85,6 +88,7 @@ class NewsService {
     required String content,
     String headerImageUrl = '',
     List<String> relatedImageUrls = const [],
+    DateTime? scheduledAt,
   }) async {
     await _db.collection('news').doc(id).update({
       'title': title,
@@ -92,6 +96,8 @@ class NewsService {
       'header_image_url': headerImageUrl,
       'related_image_urls': relatedImageUrls,
       'updated_at': FieldValue.serverTimestamp(),
+      'scheduled_at': scheduledAt != null ? Timestamp.fromDate(scheduledAt) : null,
+      'is_published': scheduledAt == null,
     });
   }
 
