@@ -26,6 +26,7 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
   final QuillController _controller = QuillController.basic();
   XFile? _selectedImage;
   List<XFile> _selectedRelatedImages = [];
+  List<String> _existingRelatedImageUrls = [];
   final ImagePicker _picker = ImagePicker();
   bool _isSubmitting = false;
   bool _showPreview = false;
@@ -104,6 +105,7 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
       _imageUrlController.text = news['header_image_url'] ?? '';
       _selectedImage = null;
       _selectedRelatedImages = [];
+      _existingRelatedImageUrls = List<String>.from(news['related_image_urls'] ?? []);
 
       // Simple plain text to quill document (basic implementation)
       final String content = news['content'] ?? '';
@@ -181,31 +183,36 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
     });
 
     try {
+      String uploadedHeaderUrl = imageUrl;
       if (_selectedImage != null) {
-        imageUrl = await NewsService.instance.uploadImage(_selectedImage!.path);
+        uploadedHeaderUrl = await NewsService.instance.uploadImage(_selectedImage!.path);
       }
 
-      List<String> relatedImageUrls = [];
+      List<String> newlyUploadedUrls = [];
       for (var xFile in _selectedRelatedImages) {
         final String url = await NewsService.instance.uploadImage(xFile.path);
-        relatedImageUrls.add(url);
+        newlyUploadedUrls.add(url);
       }
+
+      final List<String> finalRelatedImageUrls = [..._existingRelatedImageUrls, ...newlyUploadedUrls];
 
       if (_editingId != null) {
         await NewsService.instance.updateNews(
           id: _editingId!,
           title: _titleController.text.trim(),
           content: markdownContent,
-          headerImageUrl: imageUrl,
-          relatedImageUrls: relatedImageUrls,
+          category: _categoryController.text.trim(),
+          headerImageUrl: uploadedHeaderUrl,
+          relatedImageUrls: finalRelatedImageUrls,
           scheduledAt: _scheduledAt,
         );
       } else {
         await NewsService.instance.createNews(
           title: _titleController.text.trim(),
           content: markdownContent,
-          headerImageUrl: imageUrl,
-          relatedImageUrls: relatedImageUrls,
+          category: _categoryController.text.trim(),
+          headerImageUrl: uploadedHeaderUrl,
+          relatedImageUrls: finalRelatedImageUrls,
           scheduledAt: _scheduledAt,
         );
       }
@@ -239,6 +246,7 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
     setState(() {
       _selectedImage = null;
       _selectedRelatedImages = [];
+      _existingRelatedImageUrls = [];
       _editingId = null;
       _scheduledAt = null;
     });
@@ -458,38 +466,66 @@ class _CreateNewsScreenState extends State<CreateNewsScreen> {
                           ),
                           child: Column(
                             children: [
-                              if (_selectedRelatedImages.isNotEmpty)
+                              if (_existingRelatedImageUrls.isNotEmpty || _selectedRelatedImages.isNotEmpty)
                                 Padding(
                                   padding: const EdgeInsets.all(8.0),
                                   child: Wrap(
                                     spacing: 8,
                                     runSpacing: 8,
-                                    children: _selectedRelatedImages.asMap().entries.map((entry) {
-                                      final index = entry.key;
-                                      final file = entry.value;
-                                      return Stack(
-                                        children: [
-                                          ClipRRect(
-                                            borderRadius: BorderRadius.circular(8),
-                                            child: kIsWeb
-                                                ? Image.network(file.path, width: 80, height: 80, fit: BoxFit.cover)
-                                                : Image.file(File(file.path), width: 80, height: 80, fit: BoxFit.cover),
-                                          ),
-                                          Positioned(
-                                            right: -4,
-                                            top: -4,
-                                            child: IconButton(
-                                              icon: const Icon(Icons.cancel, color: Colors.red, size: 20),
-                                              onPressed: () {
-                                                setState(() {
-                                                  _selectedRelatedImages.removeAt(index);
-                                                });
-                                              },
+                                    children: [
+                                      // Existing Images
+                                      ..._existingRelatedImageUrls.asMap().entries.map((entry) {
+                                        final index = entry.key;
+                                        final url = entry.value;
+                                        return Stack(
+                                          children: [
+                                            ClipRRect(
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: Image.network(url, width: 80, height: 80, fit: BoxFit.cover),
                                             ),
-                                          ),
-                                        ],
-                                      );
-                                    }).toList(),
+                                            Positioned(
+                                              right: -4,
+                                              top: -4,
+                                              child: IconButton(
+                                                icon: const Icon(Icons.remove_circle, color: Colors.red, size: 24),
+                                                onPressed: () {
+                                                  setState(() {
+                                                    _existingRelatedImageUrls.removeAt(index);
+                                                  });
+                                                },
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      }),
+                                      // Newly Selected Images
+                                      ..._selectedRelatedImages.asMap().entries.map((entry) {
+                                        final index = entry.key;
+                                        final file = entry.value;
+                                        return Stack(
+                                          children: [
+                                            ClipRRect(
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: kIsWeb
+                                                  ? Image.network(file.path, width: 80, height: 80, fit: BoxFit.cover)
+                                                  : Image.file(File(file.path), width: 80, height: 80, fit: BoxFit.cover),
+                                            ),
+                                            Positioned(
+                                              right: -4,
+                                              top: -4,
+                                              child: IconButton(
+                                                icon: const Icon(Icons.cancel, color: Colors.orange, size: 24),
+                                                onPressed: () {
+                                                  setState(() {
+                                                    _selectedRelatedImages.removeAt(index);
+                                                  });
+                                                },
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      }),
+                                    ],
                                   ),
                                 ),
                               TextButton.icon(

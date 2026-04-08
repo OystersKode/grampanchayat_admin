@@ -61,6 +61,7 @@ class NewsService {
   Future<void> createNews({
     required String title,
     required String content,
+    String category = '',
     String headerImageUrl = '',
     List<String> relatedImageUrls = const [],
     DateTime? scheduledAt,
@@ -72,6 +73,7 @@ class NewsService {
     await _db.collection('news').add({
       'title': title,
       'content': content,
+      'category': category,
       'header_image_url': headerImageUrl,
       'related_image_urls': relatedImageUrls,
       'created_by': user?.uid,
@@ -86,6 +88,7 @@ class NewsService {
     required String id,
     required String title,
     required String content,
+    String category = '',
     String headerImageUrl = '',
     List<String> relatedImageUrls = const [],
     DateTime? scheduledAt,
@@ -93,6 +96,7 @@ class NewsService {
     await _db.collection('news').doc(id).update({
       'title': title,
       'content': content,
+      'category': category,
       'header_image_url': headerImageUrl,
       'related_image_urls': relatedImageUrls,
       'updated_at': FieldValue.serverTimestamp(),
