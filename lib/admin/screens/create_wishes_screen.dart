@@ -7,7 +7,7 @@ import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown_quill/markdown_quill.dart';
 import '../services/wishes_service.dart';
-import '../services/news_service.dart';
+import '../services/announcement_service.dart';
 import '../widgets/admin_drawer.dart';
 
 class CreateWishesScreen extends StatefulWidget {

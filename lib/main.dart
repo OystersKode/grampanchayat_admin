@@ -5,7 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'admin/services/auth_service.dart';
 import 'admin/services/member_requests_service.dart';
-import 'admin/services/news_service.dart';
+import 'admin/services/announcement_service.dart';
 import 'admin/services/wishes_service.dart';
 import 'admin/screens/admin_login_screen.dart';
 
@@ -16,7 +16,7 @@ void main() async {
   );
 
   AuthService.initialize();
-  NewsService.initialize();
+  AnnouncementService.initialize();
   WishesService.initialize();
   MemberRequestsService.initialize();
   runApp(const MyApp());
@@ -29,7 +29,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Grampanchayat Admin',
+      title: 'Kagwad Admin',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF800000)),
         useMaterial3: true,

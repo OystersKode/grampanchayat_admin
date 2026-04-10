@@ -1,3 +1,0 @@
-class NewsModel {
-  // Define properties
-}

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../screens/admin_dashboard_screen.dart';
-import '../screens/create_news_screen.dart';
+import '../screens/manage_announcements_screen.dart';
 import '../screens/create_wishes_screen.dart';
 import '../screens/member_requests_screen.dart';
 import '../screens/admin_login_screen.dart';
+import '../screens/manage_vehicles_screen.dart';
 import '../services/auth_service.dart' as firebase_auth_service;
 
 class AdminDrawer extends StatelessWidget {
@@ -103,10 +104,19 @@ class AdminDrawer extends StatelessWidget {
                 _drawerItem(
                   context,
                   icon: Icons.newspaper_outlined,
-                  label: 'News Management',
+                  label: 'Announcements',
                   onTap: () => Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (context) => const CreateNewsScreen()),
+                    MaterialPageRoute(builder: (context) => const ManageAnnouncementsScreen()),
+                  ),
+                ),
+                _drawerItem(
+                  context,
+                  icon: Icons.directions_car_outlined,
+                  label: 'Manage Vehicles',
+                  onTap: () => Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ManageVehiclesScreen()),
                   ),
                 ),
                 _drawerItem(
