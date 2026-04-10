@@ -136,33 +136,6 @@ class _ManageVehiclesScreenState extends State<ManageVehiclesScreen> {
         backgroundColor: backgroundColor,
         foregroundColor: primaryMaroon,
         elevation: 0,
-        actions: [
-          _isSeeding
-              ? const Center(child: Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator(strokeWidth: 2)))
-              : IconButton(
-                  icon: const Icon(Icons.cloud_download, color: primaryMaroon),
-                  tooltip: 'Import Driver Data',
-                  onPressed: () async {
-                    setState(() => _isSeeding = true);
-                    try {
-                      await seedVehicles();
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Driver data imported successfully!')),
-                        );
-                      }
-                    } catch (e) {
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error importing data: $e')),
-                        );
-                      }
-                    } finally {
-                      if (mounted) setState(() => _isSeeding = false);
-                    }
-                  },
-                ),
-        ],
         leading: Builder(
           builder: (context) => IconButton(
             icon: const Icon(Icons.menu, color: primaryMaroon),

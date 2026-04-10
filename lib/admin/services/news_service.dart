@@ -42,6 +42,7 @@ class NewsService {
     String? category,
     String? coverImageUrl,
     List<String>? relatedImages,
+    DateTime? scheduledAt,
   }) async {
     final user = AuthService.instance.getCurrentUser();
     await _db.collection('news').add({
@@ -52,6 +53,8 @@ class NewsService {
       'related_images': relatedImages ?? [],
       'created_by': user?.uid,
       'created_at': FieldValue.serverTimestamp(),
+      'scheduled_at': scheduledAt != null ? Timestamp.fromDate(scheduledAt) : null,
+      'is_published': scheduledAt == null,
     });
   }
 
@@ -62,6 +65,7 @@ class NewsService {
     String? category,
     String? coverImageUrl,
     List<String>? relatedImages,
+    DateTime? scheduledAt,
   }) async {
     await _db.collection('news').doc(id).update({
       'title': title,
@@ -70,6 +74,8 @@ class NewsService {
       'cover_image_url': coverImageUrl,
       'related_images': relatedImages,
       'updated_at': FieldValue.serverTimestamp(),
+      'scheduled_at': scheduledAt != null ? Timestamp.fromDate(scheduledAt) : null,
+      'is_published': scheduledAt == null,
     });
   }
 }

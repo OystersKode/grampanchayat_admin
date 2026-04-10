@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:markdown_quill/markdown_quill.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/news_service.dart';
 import '../widgets/admin_drawer.dart';
 
@@ -29,6 +30,7 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
   bool _isSubmitting = false;
   bool _showPreview = false;
   String? _editingId;
+  DateTime? _scheduledAt;
   List<Map<String, dynamic>> _allNews = [];
   List<Map<String, dynamic>> _filteredNews = [];
 
@@ -70,6 +72,7 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
       _categoryController.text = news['category'] ?? '';
       _coverImage = null;
       _relatedImages = [];
+      _scheduledAt = news['scheduled_at'] != null ? (news['scheduled_at'] as Timestamp).toDate() : null;
       final String content = news['content'] ?? '';
       _controller.document = Document()..insert(0, content);
     });
@@ -164,6 +167,7 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
           category: _categoryController.text.trim(),
           coverImageUrl: coverImageUrl,
           relatedImages: relatedImageUrls.isNotEmpty ? relatedImageUrls : null,
+          scheduledAt: _scheduledAt,
         );
       } else {
         await NewsService.instance.createNews(
@@ -172,6 +176,7 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
           category: _categoryController.text.trim(),
           coverImageUrl: coverImageUrl,
           relatedImages: relatedImageUrls,
+          scheduledAt: _scheduledAt,
         );
       }
 
@@ -203,6 +208,7 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
       _editingId = null;
       _coverImage = null;
       _relatedImages = [];
+      _scheduledAt = null;
     });
   }
 
@@ -310,6 +316,64 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
                         ),
                       ),
                     const SizedBox(height: 24),
+                    
+                    _buildLabel('Schedule News (Optional)'),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE3BEB8)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _scheduledAt == null
+                                  ? 'Post immediately'
+                                  : 'Scheduled for: ${_scheduledAt!.day}/${_scheduledAt!.month}/${_scheduledAt!.year} ${_scheduledAt!.hour}:${_scheduledAt!.minute}',
+                              style: TextStyle(
+                                color: _scheduledAt == null ? Colors.grey : Colors.black,
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () async {
+                              final date = await showDatePicker(
+                                context: context,
+                                initialDate: _scheduledAt ?? DateTime.now(),
+                                firstDate: DateTime.now(),
+                                lastDate: DateTime.now().add(const Duration(days: 365)),
+                              );
+                              if (date != null) {
+                                final time = await showTimePicker(
+                                  context: context,
+                                  initialTime: TimeOfDay.fromDateTime(_scheduledAt ?? DateTime.now()),
+                                );
+                                if (time != null) {
+                                  setState(() {
+                                    _scheduledAt = DateTime(
+                                      date.year,
+                                      date.month,
+                                      date.day,
+                                      time.hour,
+                                      time.minute,
+                                    );
+                                  });
+                                }
+                              }
+                            },
+                            child: const Text('Schedule'),
+                          ),
+                          if (_scheduledAt != null)
+                            IconButton(
+                              icon: const Icon(Icons.clear, color: Colors.red),
+                              onPressed: () => setState(() => _scheduledAt = null),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
 
                     _buildLabel('Description (Rich Text)'),
                     Row(
@@ -356,6 +420,9 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
                                 multiRowsDisplay: false,
                                 showFontFamily: false,
                                 showFontSize: false,
+                                showColorButton: false,
+                                showBackgroundColorButton: false,
+                                showClearFormat: false,
                               ),
                             ),
                             const Divider(height: 1),
