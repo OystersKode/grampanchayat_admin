@@ -20,6 +20,7 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _categoryController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   final QuillController _controller = QuillController.basic();
   
@@ -70,6 +71,7 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
       _editingId = news['id'].toString();
       _titleController.text = news['title'] ?? '';
       _categoryController.text = news['category'] ?? '';
+      _locationController.text = news['location'] ?? '';
       _coverImage = null;
       _relatedImages = [];
       _scheduledAt = news['scheduled_at'] != null ? (news['scheduled_at'] as Timestamp).toDate() : null;
@@ -165,6 +167,7 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
           title: _titleController.text.trim(),
           content: markdownContent,
           category: _categoryController.text.trim(),
+          location: _locationController.text.trim(),
           coverImageUrl: coverImageUrl,
           relatedImages: relatedImageUrls.isNotEmpty ? relatedImageUrls : null,
           scheduledAt: _scheduledAt,
@@ -174,6 +177,7 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
           title: _titleController.text.trim(),
           content: markdownContent,
           category: _categoryController.text.trim(),
+          location: _locationController.text.trim(),
           coverImageUrl: coverImageUrl,
           relatedImages: relatedImageUrls,
           scheduledAt: _scheduledAt,
@@ -203,6 +207,7 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
   void _clearForm() {
     _titleController.clear();
     _categoryController.clear();
+    _locationController.clear();
     _controller.clear();
     setState(() {
       _editingId = null;
@@ -216,6 +221,7 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
   void dispose() {
     _titleController.dispose();
     _categoryController.dispose();
+    _locationController.dispose();
     _searchController.dispose();
     _controller.dispose();
     super.dispose();
@@ -271,6 +277,12 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
                     TextFormField(
                       controller: _categoryController,
                       decoration: _buildInputDecoration('e.g. Health, Agriculture, General'),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildLabel('Location'),
+                    TextFormField(
+                      controller: _locationController,
+                      decoration: _buildInputDecoration('Enter location (e.g. Village Name, Ward No)'),
                     ),
                     const SizedBox(height: 24),
                     
