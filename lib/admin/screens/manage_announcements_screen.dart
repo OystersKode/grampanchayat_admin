@@ -18,6 +18,7 @@ class _ManageAnnouncementsScreenState extends State<ManageAnnouncementsScreen> {
   final TextEditingController _searchController = TextEditingController();
   
   bool _isSubmitting = false;
+  bool _sendNotification = true;
   String? _editingId;
   List<Map<String, dynamic>> _allNews = [];
   List<Map<String, dynamic>> _filteredNews = [];
@@ -123,6 +124,7 @@ class _ManageAnnouncementsScreenState extends State<ManageAnnouncementsScreen> {
           title: _titleController.text.trim(),
           content: _descriptionController.text.trim(),
           category: _categoryController.text.trim(),
+          sendNotification: _sendNotification,
         );
       }
 
@@ -152,6 +154,7 @@ class _ManageAnnouncementsScreenState extends State<ManageAnnouncementsScreen> {
     _categoryController.clear();
     setState(() {
       _editingId = null;
+      _sendNotification = true;
     });
   }
 
@@ -222,6 +225,19 @@ class _ManageAnnouncementsScreenState extends State<ManageAnnouncementsScreen> {
                       decoration: _buildInputDecoration('Enter announcement description'),
                       validator: (value) => value == null || value.isEmpty ? 'Please enter a description' : null,
                     ),
+                    const SizedBox(height: 16),
+                    if (_editingId == null) ...[
+                      _buildLabel('Notification'),
+                      CheckboxListTile(
+                        title: const Text('Send notification to users'),
+                        value: _sendNotification,
+                        onChanged: (val) => setState(() => _sendNotification = val ?? true),
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        activeColor: primaryMaroon,
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,

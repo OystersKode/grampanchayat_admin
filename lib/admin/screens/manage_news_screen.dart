@@ -30,6 +30,7 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
   
   bool _isSubmitting = false;
   bool _showPreview = false;
+  bool _sendNotification = true;
   String? _editingId;
   DateTime? _scheduledAt;
   List<Map<String, dynamic>> _allNews = [];
@@ -181,6 +182,7 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
           coverImageUrl: coverImageUrl,
           relatedImages: relatedImageUrls,
           scheduledAt: _scheduledAt,
+          sendNotification: _sendNotification,
         );
       }
 
@@ -214,6 +216,7 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
       _coverImage = null;
       _relatedImages = [];
       _scheduledAt = null;
+      _sendNotification = true;
     });
   }
 
@@ -385,7 +388,20 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
+
+                    if (_editingId == null) ...[
+                      _buildLabel('Notification'),
+                      CheckboxListTile(
+                        title: const Text('Send notification to users'),
+                        value: _sendNotification,
+                        onChanged: (val) => setState(() => _sendNotification = val ?? true),
+                        contentPadding: EdgeInsets.zero,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        activeColor: primaryMaroon,
+                      ),
+                      const SizedBox(height: 8),
+                    ],
 
                     _buildLabel('Description (Rich Text)'),
                     Row(

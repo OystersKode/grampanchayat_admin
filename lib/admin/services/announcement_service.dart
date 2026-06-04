@@ -23,6 +23,7 @@ class AnnouncementService {
     required String title,
     required String content,
     String? category,
+    bool sendNotification = true,
   }) async {
     final user = AuthService.instance.getCurrentUser();
     await _db.collection('announcements').add({
@@ -31,6 +32,8 @@ class AnnouncementService {
       'category': category,
       'created_by': user?.uid,
       'created_at': FieldValue.serverTimestamp(),
+      'send_notification': sendNotification,
+      'notification_sent': false,
     });
   }
 

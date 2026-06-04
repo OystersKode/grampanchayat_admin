@@ -44,6 +44,7 @@ class NewsService {
     String? coverImageUrl,
     List<String>? relatedImages,
     DateTime? scheduledAt,
+    bool sendNotification = true,
   }) async {
     final user = AuthService.instance.getCurrentUser();
     await _db.collection('news').add({
@@ -57,6 +58,8 @@ class NewsService {
       'created_at': FieldValue.serverTimestamp(),
       'scheduled_at': scheduledAt != null ? Timestamp.fromDate(scheduledAt) : null,
       'is_published': scheduledAt == null,
+      'send_notification': sendNotification,
+      'notification_sent': false,
     });
   }
 

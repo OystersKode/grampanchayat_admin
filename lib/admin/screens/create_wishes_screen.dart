@@ -27,6 +27,7 @@ class _CreateWishesScreenState extends State<CreateWishesScreen> {
   final ImagePicker _picker = ImagePicker();
   bool _isSubmitting = false;
   bool _showPreview = false;
+  bool _sendNotification = true;
   String? _editingId;
   DateTime? _scheduledAt;
   List<Map<String, dynamic>> _allWishes = [];
@@ -148,6 +149,7 @@ class _CreateWishesScreenState extends State<CreateWishesScreen> {
           headerImageUrl: imageUrl,
           tag: _tagController.text.trim(),
           scheduledAt: _scheduledAt,
+          sendNotification: _sendNotification,
         );
       } else {
         await WishesService.instance.createWish(
@@ -156,6 +158,7 @@ class _CreateWishesScreenState extends State<CreateWishesScreen> {
           headerImageUrl: imageUrl,
           tag: _tagController.text.trim(),
           scheduledAt: _scheduledAt,
+          sendNotification: _sendNotification,
         );
       }
 
@@ -189,6 +192,7 @@ class _CreateWishesScreenState extends State<CreateWishesScreen> {
       _selectedImage = null;
       _editingId = null;
       _scheduledAt = null;
+      _sendNotification = true;
     });
   }
 
@@ -410,6 +414,19 @@ class _CreateWishesScreenState extends State<CreateWishesScreen> {
                             ],
                           ),
                         ),
+                        const SizedBox(height: 16),
+                        if (_editingId == null) ...[
+                          _buildLabel('Notification'),
+                          CheckboxListTile(
+                            title: const Text('Send notification to users'),
+                            value: _sendNotification,
+                            onChanged: (val) => setState(() => _sendNotification = val ?? true),
+                            contentPadding: EdgeInsets.zero,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            activeColor: primaryMaroon,
+                          ),
+                          const SizedBox(height: 8),
+                        ],
                         const SizedBox(height: 8),
                         if (_showPreview)
                           Container(

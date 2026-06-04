@@ -38,6 +38,7 @@ class WishesService {
     String headerImageUrl = '',
     String tag = '',
     DateTime? scheduledAt,
+    bool sendNotification = true,
   }) async {
     final user = AuthService.instance.getCurrentUser();
     
@@ -50,6 +51,8 @@ class WishesService {
       'created_at': FieldValue.serverTimestamp(),
       'scheduled_at': scheduledAt != null ? Timestamp.fromDate(scheduledAt) : null,
       'is_published': scheduledAt == null,
+      'send_notification': sendNotification,
+      'notification_sent': false,
     });
   }
 
