@@ -54,12 +54,16 @@ class _ManageAnnouncementsScreenState extends State<ManageAnnouncementsScreen> {
     });
   }
 
+  bool _notificationSent = false;
+
   void _editNews(Map<String, dynamic> news) {
     setState(() {
       _editingId = news['id'].toString();
       _titleController.text = news['title'] ?? '';
       _descriptionController.text = news['content'] ?? '';
       _categoryController.text = news['category'] ?? '';
+      _sendNotification = news['send_notification'] ?? true;
+      _notificationSent = news['notification_sent'] ?? false;
     });
   }
 
@@ -118,6 +122,7 @@ class _ManageAnnouncementsScreenState extends State<ManageAnnouncementsScreen> {
           title: _titleController.text.trim(),
           content: _descriptionController.text.trim(),
           category: _categoryController.text.trim(),
+          sendNotification: _sendNotification,
         );
       } else {
         await AnnouncementService.instance.createAnnouncement(
@@ -226,10 +231,10 @@ class _ManageAnnouncementsScreenState extends State<ManageAnnouncementsScreen> {
                       validator: (value) => value == null || value.isEmpty ? 'Please enter a description' : null,
                     ),
                     const SizedBox(height: 16),
-                    if (_editingId == null) ...[
+                    if (_editingId == null || !_notificationSent) ...[
                       _buildLabel('Notification'),
                       CheckboxListTile(
-                        title: const Text('Send notification to users'),
+                        title: Text(_editingId == null ? 'Send notification to users' : 'Resend/Send notification to users'),
                         value: _sendNotification,
                         onChanged: (val) => setState(() => _sendNotification = val ?? true),
                         contentPadding: EdgeInsets.zero,

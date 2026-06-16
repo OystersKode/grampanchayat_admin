@@ -63,6 +63,7 @@ class WishesService {
     String headerImageUrl = '',
     String tag = '',
     DateTime? scheduledAt,
+    bool sendNotification = true,
   }) async {
     await _db.collection('wishes').doc(id).update({
       'title': title,
@@ -72,6 +73,7 @@ class WishesService {
       'updated_at': FieldValue.serverTimestamp(),
       'scheduled_at': scheduledAt != null ? Timestamp.fromDate(scheduledAt) : null,
       'is_published': scheduledAt == null,
+      'send_notification': sendNotification,
     });
   }
 

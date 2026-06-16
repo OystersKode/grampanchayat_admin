@@ -24,6 +24,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   @override
   void initState() {
     super.initState();
+    
+
     _refreshStats();
   }
 
