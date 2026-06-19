@@ -42,12 +42,14 @@ class AnnouncementService {
     required String title,
     required String content,
     String? category,
+    bool sendNotification = true,
   }) async {
     await _db.collection('announcements').doc(id).update({
       'title': title,
       'content': content,
       'category': category,
       'updated_at': FieldValue.serverTimestamp(),
+      'send_notification': sendNotification,
     });
   }
 }

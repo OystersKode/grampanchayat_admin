@@ -72,6 +72,7 @@ class NewsService {
     String? coverImageUrl,
     List<String>? relatedImages,
     DateTime? scheduledAt,
+    bool sendNotification = true,
   }) async {
     await _db.collection('news').doc(id).update({
       'title': title,
@@ -83,6 +84,7 @@ class NewsService {
       'updated_at': FieldValue.serverTimestamp(),
       'scheduled_at': scheduledAt != null ? Timestamp.fromDate(scheduledAt) : null,
       'is_published': scheduledAt == null,
+      'send_notification': sendNotification,
     });
   }
 }

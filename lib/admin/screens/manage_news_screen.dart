@@ -67,6 +67,8 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
     });
   }
 
+  bool _notificationSent = false;
+
   void _editNews(Map<String, dynamic> news) {
     setState(() {
       _editingId = news['id'].toString();
@@ -76,6 +78,8 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
       _coverImage = null;
       _relatedImages = [];
       _scheduledAt = news['scheduled_at'] != null ? (news['scheduled_at'] as Timestamp).toDate() : null;
+      _sendNotification = news['send_notification'] ?? true;
+      _notificationSent = news['notification_sent'] ?? false;
       final String content = news['content'] ?? '';
       _controller.document = Document()..insert(0, content);
     });
@@ -172,6 +176,7 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
           coverImageUrl: coverImageUrl,
           relatedImages: relatedImageUrls.isNotEmpty ? relatedImageUrls : null,
           scheduledAt: _scheduledAt,
+          sendNotification: _sendNotification,
         );
       } else {
         await NewsService.instance.createNews(
@@ -390,10 +395,10 @@ class _ManageNewsScreenState extends State<ManageNewsScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    if (_editingId == null) ...[
+                    if (_editingId == null || !_notificationSent) ...[
                       _buildLabel('Notification'),
                       CheckboxListTile(
-                        title: const Text('Send notification to users'),
+                        title: Text(_editingId == null ? 'Send notification to users' : 'Resend/Send notification to users'),
                         value: _sendNotification,
                         onChanged: (val) => setState(() => _sendNotification = val ?? true),
                         contentPadding: EdgeInsets.zero,
