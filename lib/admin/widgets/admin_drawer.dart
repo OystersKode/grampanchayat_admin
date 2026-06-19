@@ -6,6 +6,8 @@ import '../screens/create_wishes_screen.dart';
 import '../screens/member_requests_screen.dart';
 import '../screens/admin_login_screen.dart';
 import '../screens/manage_vehicles_screen.dart';
+import '../screens/manage_institutes_screen.dart';
+import '../screens/manage_advertisements_screen.dart';
 import '../services/auth_service.dart' as firebase_auth_service;
 
 class AdminDrawer extends StatelessWidget {
@@ -121,11 +123,29 @@ class AdminDrawer extends StatelessWidget {
                 ),
                 _drawerItem(
                   context,
+                  icon: Icons.school_outlined,
+                  label: 'Manage Schools & Colleges',
+                  onTap: () => Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ManageInstitutesScreen()),
+                  ),
+                ),
+                _drawerItem(
+                  context,
                   icon: Icons.auto_awesome_outlined,
                   label: 'Village Wishes',
                   onTap: () => Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(builder: (context) => const CreateWishesScreen()),
+                  ),
+                ),
+                _drawerItem(
+                  context,
+                  icon: Icons.ad_units_outlined,
+                  label: 'Manage Advertisements',
+                  onTap: () => Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ManageAdvertisementsScreen()),
                   ),
                 ),
                 _drawerItem(
