@@ -74,17 +74,25 @@ class NewsService {
     DateTime? scheduledAt,
     bool sendNotification = true,
   }) async {
-    await _db.collection('news').doc(id).update({
+    final Map<String, dynamic> data = {
       'title': title,
       'content': content,
       'category': category,
       'location': location,
-      'cover_image_url': coverImageUrl,
-      'related_images': relatedImages,
       'updated_at': FieldValue.serverTimestamp(),
       'scheduled_at': scheduledAt != null ? Timestamp.fromDate(scheduledAt) : null,
       'is_published': scheduledAt == null,
       'send_notification': sendNotification,
-    });
+    };
+
+    if (coverImageUrl != null) data['cover_image_url'] = coverImageUrl;
+    if (relatedImages != null) data['related_images'] = relatedImages;
+    
+    // Reset notification_sent to false if user wants to send it again
+    if (sendNotification) {
+      data['notification_sent'] = false;
+    }
+
+    await _db.collection('news').doc(id).update(data);
   }
 }

@@ -25,6 +25,7 @@ class _ManageInstitutesScreenState extends State<ManageInstitutesScreen> {
   final _contactController = TextEditingController();
   final _emailController = TextEditingController();
   final _websiteController = TextEditingController();
+  bool _sendNotification = true;
 
   @override
   void dispose() {
@@ -51,6 +52,7 @@ class _ManageInstitutesScreenState extends State<ManageInstitutesScreen> {
       _emailController.text = institute.email;
       _websiteController.text = institute.website;
       _existingImageUrl = institute.imageUrl;
+      _sendNotification = institute.sendNotification;
       _selectedImage = null;
     } else {
       _nameController.clear();
@@ -58,6 +60,7 @@ class _ManageInstitutesScreenState extends State<ManageInstitutesScreen> {
       _emailController.clear();
       _websiteController.clear();
       _existingImageUrl = null;
+      _sendNotification = true;
       _selectedImage = null;
     }
 
@@ -134,6 +137,18 @@ class _ManageInstitutesScreenState extends State<ManageInstitutesScreen> {
                     decoration: const InputDecoration(labelText: 'Website URL'),
                     keyboardType: TextInputType.url,
                   ),
+                  const SizedBox(height: 8),
+                  CheckboxListTile(
+                    title: const Text('Send notification'),
+                    value: _sendNotification,
+                    onChanged: (val) {
+                      setDialogState(() {
+                        _sendNotification = val ?? true;
+                      });
+                    },
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                  ),
                 ],
               ),
             ),
@@ -162,6 +177,9 @@ class _ManageInstitutesScreenState extends State<ManageInstitutesScreen> {
                       contactNumber: _contactController.text,
                       email: _emailController.text,
                       website: _websiteController.text,
+                      sendNotification: _sendNotification,
+                      // Reset notificationSent to false if sendNotification is true
+                      notificationSent: _sendNotification ? false : (institute?.notificationSent ?? false),
                     );
 
                     if (institute == null) {

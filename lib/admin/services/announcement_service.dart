@@ -50,6 +50,7 @@ class AnnouncementService {
       'category': category,
       'updated_at': FieldValue.serverTimestamp(),
       'send_notification': sendNotification,
+      'notification_sent': sendNotification ? false : true, // Reset if sending
     });
   }
 }

@@ -74,6 +74,7 @@ class WishesService {
       'scheduled_at': scheduledAt != null ? Timestamp.fromDate(scheduledAt) : null,
       'is_published': scheduledAt == null,
       'send_notification': sendNotification,
+      'notification_sent': sendNotification ? false : true, // Reset if sending
     });
   }
 

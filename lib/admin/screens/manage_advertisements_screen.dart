@@ -23,6 +23,7 @@ class _ManageAdvertisementsScreenState extends State<ManageAdvertisementsScreen>
 
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
+  bool _sendNotification = true;
 
   @override
   void dispose() {
@@ -36,11 +37,13 @@ class _ManageAdvertisementsScreenState extends State<ManageAdvertisementsScreen>
       _titleController.text = ad.title;
       _descriptionController.text = ad.description;
       _existingImageUrl = ad.imageUrl;
+      _sendNotification = ad.sendNotification;
       _selectedImage = null;
     } else {
       _titleController.clear();
       _descriptionController.clear();
       _existingImageUrl = null;
+      _sendNotification = true;
       _selectedImage = null;
     }
 
@@ -108,6 +111,18 @@ class _ManageAdvertisementsScreenState extends State<ManageAdvertisementsScreen>
                     maxLines: 3,
                     validator: (value) => value!.isEmpty ? 'Enter description' : null,
                   ),
+                  const SizedBox(height: 8),
+                  CheckboxListTile(
+                    title: const Text('Send notification'),
+                    value: _sendNotification,
+                    onChanged: (val) {
+                      setDialogState(() {
+                        _sendNotification = val ?? true;
+                      });
+                    },
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                  ),
                 ],
               ),
             ),
@@ -141,6 +156,9 @@ class _ManageAdvertisementsScreenState extends State<ManageAdvertisementsScreen>
                       title: _titleController.text,
                       description: _descriptionController.text,
                       imageUrl: imageUrl,
+                      sendNotification: _sendNotification,
+                      // Reset notificationSent to false if sendNotification is true
+                      notificationSent: _sendNotification ? false : (ad?.notificationSent ?? false),
                     );
 
                     if (ad == null) {
